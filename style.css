@@ -127,6 +127,9 @@ button { cursor: pointer; }
 .seg button[data-type="out"][aria-pressed="true"] { background: var(--neg-soft); color: var(--neg-ink); }
 .seg button[data-type="in"][aria-pressed="true"] { background: var(--pos-soft); color: var(--pos-ink); }
 .add-row { display: flex; gap: 8px; }
+.when { display: flex; flex-direction: column; gap: 6px; }
+.seg-sm button { padding: 8px; font-size: 14px; }
+.seg-sm button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
 input { background: var(--sunk); border: 1.5px solid transparent; border-radius: 14px; padding: 12px; min-width: 0; width: 100%; }
 input:focus { border-color: var(--accent); outline: none; }
 .amt { flex: 0 0 38%; font-family: var(--display); font-weight: 700; font-size: 20px; }

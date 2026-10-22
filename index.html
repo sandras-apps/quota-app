@@ -71,6 +71,13 @@
           <input id="inNote" class="note" placeholder="Nota (facoltativa)">
         </form>
         <div class="cats" id="cats" role="radiogroup" aria-label="Categoria"></div>
+        <div class="when" id="when" hidden>
+          <div class="seg seg-sm" role="group" aria-label="Quando conta questa entrata">
+            <button type="button" data-spread="0" aria-pressed="false">Tutto subito</button>
+            <button type="button" data-spread="1" aria-pressed="true">Diviso sui giorni</button>
+          </div>
+          <p class="hint" id="whenHint"></p>
+        </div>
         <button class="btn accent wide" type="submit" form="addForm" id="addBtn">
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
           <span id="addBtnText">Aggiungi uscita</span>

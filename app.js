@@ -87,6 +87,7 @@
   let addDate = null;    // giorno a cui si aggiungono i movimenti (null = oggi)
   let type = 'out';
   let cat = 'alimentari';
+  let spread = true;     // entrate: divise sui giorni (true) o tutte subito (false)
   let filter = 'all';
   let editingId = null;
 
@@ -102,15 +103,20 @@
      Se spendi più della quota (Periodi → impostazione):
      - "Recupera" (riporto): la quota resta fissa; risparmi e sforamenti passano ai giorni dopo.
      - "Ricalcola": ogni giorno i soldi rimasti vengono divisi per i giorni che mancano alla fine. */
+  // Un'entrata può contare "tutto subito" (es. un rimborso: si aggiunge alla quota di quel giorno)
+  // oppure "divisa sui giorni" (es. lo stipendio: si spalma fino alla fine del periodo).
+  // Le entrate vecchie senza scelta: i rimborsi contano subito, il resto viene diviso.
+  const isOneOff = (e) => e.type === 'in' && (e.spread === false || (e.spread === undefined && e.cat === 'rimborso'));
   function sources(p) {
     const s = [{ date: p.start, amount: p.base || 0 }];
-    list().forEach((e) => { if (e.type === 'in') s.push({ date: e.date < p.start ? p.start : e.date, amount: e.amount }); });
+    list().forEach((e) => { if (e.type === 'in') s.push({ date: e.date < p.start ? p.start : e.date, amount: e.amount, once: isOneOff(e) }); });
     return s;
   }
   function accrued(p, day) {
     let t = 0;
     for (const s of sources(p)) {
       if (day < s.date) continue;
+      if (s.once) { t += s.amount; continue; }
       const span = diff(s.date, p.end) + 1;
       t += s.amount * Math.min(diff(s.date, day) + 1, span) / span;
     }
@@ -125,10 +131,12 @@
   function dayInfo(p, day) {
     const q0 = quotaOn(p, day);
     if (mode() === 'ricalcola') {
-      const rest = knownMoney(p, day) - outBefore(day);
+      const once = list().reduce((a, e) => a + (isOneOff(e) && (e.date === day || (day === p.start && e.date < p.start)) ? e.amount : 0), 0);
+      const rest = knownMoney(p, day) - outBefore(day) - once;
+      const total = rest + once;
       const n = diff(day, p.end) + 1;
-      const avail = rest > 0 ? rest / n : 0;
-      return { avail, quota: avail, carried: 0, rest, n, q0 };
+      const avail = Math.max(0, Math.min(total, (rest > 0 ? rest / n : 0) + once));
+      return { avail, quota: avail, carried: 0, rest: total, n, q0 };
     }
     const avail = availableAt(p, day);
     return { avail, quota: q0, carried: avail - q0, q0 };
@@ -245,6 +253,7 @@
     $('addFor').hidden = !addDate || addDate === today;
     $('addForText').textContent = 'Stai aggiungendo a ' + long(d);
     $('addBtnText').textContent = type === 'in' ? 'Aggiungi entrata' : 'Aggiungi uscita';
+    renderWhen();
 
     renderWeek(p);
     const items = list().filter((e) => e.date === today);
@@ -270,7 +279,7 @@
     const c = catOf(e);
     return '<li class="item' + (e.type === 'in' ? ' in' : '') + '" data-id="' + e.id + '">' +
       '<span class="ico">' + svg(c.icon) + '</span>' +
-      '<span class="txt"><b>' + esc(e.note || c.name) + '</b><span>' + esc(c.name) + '</span></span>' +
+      '<span class="txt"><b>' + esc(e.note || c.name) + '</b><span>' + esc(c.name + (e.type === 'in' ? (isOneOff(e) ? ' · tutto subito' : ' · diviso sui giorni') : '')) + '</span></span>' +
       '<span class="amt-v num">' + (e.type === 'in' ? '+' : '−') + money(e.amount) + '</span>' +
       '<button type="button" class="del" aria-label="Elimina">×</button></li>';
   }
@@ -408,19 +417,30 @@
 
   /* ---------------- movimenti ---------------- */
   $$('.seg button').forEach((b) => b.addEventListener('click', () => {
-    type = b.dataset.type; cat = CATS[type][0].id;
+    type = b.dataset.type; cat = CATS[type][0].id; spread = cat !== 'rimborso';
     $$('.seg button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
     $('addCard').classList.toggle('in', type === 'in');
     renderCats(); renderToday();
   }));
-  $('cats').addEventListener('click', (ev) => { const b = ev.target.closest('[data-cat]'); if (b) { cat = b.dataset.cat; renderCats(); } });
+  $('cats').addEventListener('click', (ev) => { const b = ev.target.closest('[data-cat]'); if (b) { cat = b.dataset.cat; if (type === 'in') spread = cat !== 'rimborso'; renderCats(); renderWhen(); } });
+  function renderWhen() {
+    $('when').hidden = type !== 'in';
+    $$('#when [data-spread]').forEach((x) => x.setAttribute('aria-pressed', String((x.dataset.spread === '1') === spread)));
+    const d = addDate && addDate !== today ? 'quel giorno' : 'oggi';
+    $('whenHint').textContent = spread
+      ? 'Si divide sui giorni che restano fino alla fine del periodo. Ideale per lo stipendio.'
+      : 'Si aggiunge tutto a quello che puoi spendere ' + d + '. Ideale per un rimborso.';
+  }
+  $$('#when [data-spread]').forEach((x) => x.addEventListener('click', () => { spread = x.dataset.spread === '1'; renderWhen(); }));
   $('addForm').addEventListener('submit', (ev) => {
     ev.preventDefault();
     if (!cur()) { openEditor(null); return; }
     const v = parseAmt($('inAmt').value);
     if (!(v > 0)) { $('inAmt').focus(); $('inAmt').placeholder = 'Importo?'; return; }
     const d = addDate || today;
-    list().push({ id: uid(), date: d, amount: v, type, cat, note: $('inNote').value.trim() });
+    const entry = { id: uid(), date: d, amount: v, type, cat, note: $('inNote').value.trim() };
+    if (type === 'in') entry.spread = spread;
+    list().push(entry);
     save();
     $('inAmt').value = ''; $('inNote').value = ''; $('inAmt').blur();
     toast((type === 'in' ? 'Entrata aggiunta' : 'Uscita aggiunta') + (d !== today ? ' al ' + short(d) : ''));
