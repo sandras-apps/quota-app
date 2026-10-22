@@ -629,7 +629,14 @@
   });
   if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) $('installCard').hidden = true;
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
-    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+    // quando arriva una versione nuova dell'app, ricarica una volta da sola
+    let reloaded = false;
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloaded) { reloaded = true; location.reload(); } });
+    }
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => {
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
+    }).catch(() => {}));
   }
 
   /* ---------------- cambio giorno ---------------- */
