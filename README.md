@@ -1,7 +1,15 @@
-<p align="center"><img src="icons/icon-512.png" width="120" alt="Quota"></p>
+<p align="center"><img src="icons/icon-512.png" width="112" alt="Quota"></p>
 
 <h1 align="center">quota</h1>
 <p align="center"><i>Ogni giorno, il tuo equilibrio.</i></p>
+<p align="center"><a href="https://sandras-apps.github.io/quota-app/"><b>Apri l'app →</b></a></p>
+
+<p align="center">
+  <img src="docs/oggi.jpg" width="200" alt="Oggi">
+  <img src="docs/in-rosso.jpg" width="200" alt="In rosso">
+  <img src="docs/calendario.jpg" width="200" alt="Calendario">
+  <img src="docs/scuro.jpg" width="200" alt="Tema scuro">
+</p>
 
 Quota è un'app di budget giornaliero. Scegli un periodo (per esempio da uno stipendio all'altro) e quanti soldi hai: l'app li divide per i giorni e ti dice **quanto puoi spendere oggi**.
 
@@ -11,11 +19,18 @@ Quota è un'app di budget giornaliero. Scegli un periodo (per esempio da uno sti
   - **Ricalcola**: quello che resta viene ridiviso sui giorni che mancano, così arrivi sempre a fine periodo.
 - Le **entrate** vengono divise tra i giorni che restano.
 - Calendario con tre stati riconoscibili anche dalla forma: cerchio pieno (in quota), cerchio vuoto (zero spese), cerchio con punto (sforato).
-- Tema chiaro e scuro automatici, funziona **offline** e si installa sulla schermata Home.
+- Tema chiaro e scuro automatici, funziona **offline**, si installa sulla schermata Home.
+- Gratuita, **senza account**: i dati restano sul telefono.
 
-I dati restano **solo sul telefono**: nessun account, nessun server. Da *Periodi* puoi scaricare e ricaricare un backup.
+## Installarla
+- **Android:** apri il link in Chrome → ⋮ → **Installa app**.
+- **iPhone:** apri il link in Safari → Condividi → **Aggiungi alla schermata Home**.
 
-## File
+## Cambiare telefono
+1. Sul vecchio telefono: *Periodi → Backup → **Invia backup*** e mandati il file (WhatsApp, email, Drive).
+2. Sul nuovo telefono: apri l'app e tocca **"Hai cambiato telefono? Carica il tuo backup"**.
+
+## Struttura
 
 | File | A cosa serve |
 |---|---|
@@ -25,34 +40,12 @@ I dati restano **solo sul telefono**: nessun account, nessun server. Da *Periodi
 | `manifest.webmanifest` | Nome, colori e icone per l'installazione |
 | `sw.js` | Service worker per l'uso offline |
 | `icons/` | Logo e icone |
-| `.nojekyll` | Dice a GitHub Pages di pubblicare i file così come sono |
+| `docs/` | Schermate per questo README |
 
-## Pubblicarla su GitHub Pages
-
-**Dal sito, senza terminale**
-1. Vai su [github.com/new](https://github.com/new), chiama il repository `quota`, scegli **Public** e crealo.
-2. Clicca **uploading an existing file** e trascina tutto il **contenuto** della cartella `quota` (file e cartella `icons`). Clicca **Commit changes**.
-3. **Settings → Pages** → *Deploy from a branch* → branch **main**, cartella **/ (root)** → **Save**.
-4. Dopo 1–2 minuti l'app è su `https://TUO-NOME-UTENTE.github.io/quota/`.
-
-**Con Claude Code o dal terminale**
-```bash
-cd quota
-git init
-git add .
-git commit -m "Prima versione di Quota"
-git branch -M main
-git remote add origin https://github.com/TUO-NOME-UTENTE/quota.git
-git push -u origin main
-```
-Poi attiva Pages come al punto 3.
-
-## Installarla sul telefono
-- **iPhone:** Safari → Condividi → **Aggiungi alla schermata Home**.
-- **Android:** Chrome → ⋮ → **Installa app**.
+Nessuna build: è HTML, CSS e JavaScript puro, pubblicato con GitHub Pages dal branch `main`.
 
 ## Aggiornare l'app
-Dopo ogni modifica, in `sw.js` cambia `const VERSION = 'quota-v1';` in `quota-v2`, `quota-v3`… così i telefoni scaricano la nuova versione.
+Dopo ogni modifica, in `sw.js` aumenta il numero in `const VERSION = 'quota-v3';` (`quota-v4`, `quota-v5`…), così i telefoni scaricano la nuova versione.
 
 ## Identità
 
@@ -64,5 +57,5 @@ Dopo ogni modifica, in `sw.js` cambia `const VERSION = 'quota-v1';` in `quota-v2
 | In quota | Menta `#35B982` | `#35B982` |
 | In rosso | Corallo tenue `#E77979` | `#E77979` |
 
-Font: **Plus Jakarta Sans** (titoli e cifre) e **Inter** (testi), da Google Fonts.
+Font: **Plus Jakarta Sans** (titoli e cifre) e **Inter** (testi).
 Logo: un sole che sorge sull'orizzonte, la quota come punto di equilibrio.
