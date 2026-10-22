@@ -163,11 +163,12 @@
 
       <article class="card">
         <div class="card-head"><h2>Backup</h2></div>
-        <p class="hint">I dati restano solo su questo telefono. Salva un backup ogni tanto, così non perdi niente se cambi telefono o cancelli i dati del browser.</p>
+        <p class="hint">I dati restano solo su questo telefono. Per passare a un altro telefono: qui crei il backup e te lo mandi (WhatsApp, email, Drive), sull'altro telefono lo carichi.</p>
+        <p class="backup-last" id="backupLast"></p>
         <div class="row">
+          <button class="btn accent" id="btnShare" type="button" hidden>Invia backup</button>
           <button class="btn" id="btnExport" type="button">Scarica backup</button>
           <label class="btn" for="fileImport">Carica backup</label>
-          <input id="fileImport" type="file" accept="application/json,.json" hidden>
         </div>
         <p class="hint" id="backupMsg" hidden></p>
       </article>
@@ -199,6 +200,7 @@
           <button class="btn" id="pCancel" type="button">Annulla</button>
         </div>
         <div id="pDeleteZone"></div>
+        <p class="restore" id="pRestore" hidden>Hai cambiato telefono? <label class="link" for="fileImport">Carica il tuo backup</label></p>
       </div>
     </div>
 
@@ -222,6 +224,7 @@
       </button>
     </nav>
 
+    <input id="fileImport" type="file" accept="application/json,.json" hidden>
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
   </div>
 

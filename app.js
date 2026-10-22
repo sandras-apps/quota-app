@@ -375,6 +375,7 @@
       '<button type="button" class="link" data-edit="' + p.id + '">Modifica</button></div>'
     ).join('') : '<p class="empty">Nessun periodo. Creane uno per iniziare.</p>';
     $$('#modeOpts [data-mode]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.mode === mode())));
+    if (typeof renderBackup === 'function') renderBackup();
   }
 
   function renderAll() {
@@ -498,6 +499,7 @@
     $('pBase').value = p && p.base ? String(p.base).replace('.', ',') : '';
     $('pError').hidden = true;
     $('pCancel').hidden = !state.periods.length;
+    $('pRestore').hidden = state.periods.length > 0;
     const z = $('pDeleteZone');
     z.innerHTML = p ? '<button type="button" class="btn" id="pDel">Elimina periodo</button>' : '';
     if (p) $('pDel').addEventListener('click', () => {
@@ -545,13 +547,36 @@
   }
 
   /* ---------------- backup ---------------- */
+  const backupName = () => 'quota-backup-' + today + '.json';
+  const backupText = () => JSON.stringify({ app: 'quota', version: 1, exported: new Date().toISOString(), data: state }, null, 2);
+  function markBackup() { state.settings.lastBackup = today; save(); renderBackup(); }
+  function renderBackup() {
+    const last = state.settings.lastBackup, el = $('backupLast');
+    if (!last) { el.textContent = 'Non hai ancora fatto un backup.'; el.classList.toggle('old', state.periods.length > 0); return; }
+    const n = diff(last, today);
+    el.textContent = 'Ultimo backup: ' + (n <= 0 ? 'oggi' : n === 1 ? 'ieri' : n + ' giorni fa') + '.';
+    el.classList.toggle('old', n > 14);
+  }
+  // Invia backup: usa il menu di condivisione del telefono (WhatsApp, email, Drive…)
+  try {
+    const probe = new File(['{}'], 'quota.json', { type: 'application/json' });
+    if (navigator.canShare && navigator.canShare({ files: [probe] })) $('btnShare').hidden = false;
+  } catch (e) { /* condivisione file non supportata */ }
+  $('btnShare').addEventListener('click', async () => {
+    try {
+      const file = new File([backupText()], backupName(), { type: 'application/json' });
+      await navigator.share({ files: [file], title: 'Backup Quota', text: 'Backup di Quota del ' + short(today) });
+      markBackup(); toast('Backup inviato');
+    } catch (e) { if (e && e.name !== 'AbortError') toast('Non riesco a condividere: usa "Scarica backup".'); }
+  });
   $('btnExport').addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify({ app: 'quota', version: 1, exported: new Date().toISOString(), data: state }, null, 2)], { type: 'application/json' });
+    const blob = new Blob([backupText()], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'quota-backup-' + today + '.json';
+    a.download = backupName();
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    markBackup();
   });
   $('fileImport').addEventListener('change', async (ev) => {
     const f = ev.target.files[0]; if (!f) return;
@@ -566,6 +591,8 @@
       selDate = cur() ? clampSel(cur()) : today;
       renderAll();
       msg.textContent = 'Backup caricato: ' + plural(state.periods.length, 'periodo', 'periodi') + '.';
+      if (!$('sheet').hidden && cur()) { closeEditor(); go('today'); }
+      toast('Backup caricato: ' + plural(state.periods.length, 'periodo', 'periodi'));
     } catch (e) {
       msg.textContent = 'Questo file non è un backup di Quota. Scegli il file .json scaricato con "Scarica backup".';
     }
