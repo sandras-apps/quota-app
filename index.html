@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Quota</title>
+  <meta name="description" content="Quota — ogni giorno, il tuo equilibrio. Budget giornaliero con riporto.">
+  <meta name="theme-color" content="#F2F3F1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#15171C" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Quota">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+
+    <!-- ================= OGGI ================= -->
+    <section class="view" data-view="today">
+      <header class="top">
+        <div class="brand">
+          <picture><source srcset="icons/symbol-light.svg" media="(prefers-color-scheme: dark)"><img src="icons/symbol.svg" alt="" width="34" height="20"></picture>
+          <span>quota</span>
+        </div>
+        <button class="pill" type="button" data-open-periods><span class="period-name">Periodo</span>
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </header>
+
+      <div class="ring-wrap" id="ringWrap">
+        <svg class="ring" viewBox="0 0 200 200" aria-hidden="true">
+          <circle class="ring-track" cx="100" cy="100" r="88"/>
+          <circle class="ring-arc" id="ringArc" cx="100" cy="100" r="88" pathLength="100" stroke-dasharray="0 100"/>
+        </svg>
+        <div class="ring-text">
+          <span class="ring-label" id="heroLabel">Oggi puoi spendere</span>
+          <span class="ring-amt num" id="heroAmt">0 €</span>
+          <span class="ring-sub num" id="heroSub"></span>
+        </div>
+      </div>
+
+      <button class="status" id="status" type="button" data-go="calendar">
+        <span class="status-ico" id="statusIco"></span>
+        <span class="status-txt"><b id="statusTitle"></b><span id="statusSub"></span></span>
+        <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+
+      <article class="card add" id="addCard">
+        <div class="add-for" id="addFor" hidden>
+          <span id="addForText"></span>
+          <button type="button" class="link" id="addForReset">Torna a oggi</button>
+        </div>
+        <div class="seg" role="group" aria-label="Tipo di movimento">
+          <button type="button" data-type="out" aria-pressed="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Uscita</button>
+          <button type="button" data-type="in" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Entrata</button>
+        </div>
+        <form id="addForm" class="add-row" autocomplete="off">
+          <label class="sr" for="inAmt">Importo</label>
+          <input id="inAmt" class="amt num" inputmode="decimal" placeholder="0,00 €">
+          <label class="sr" for="inNote">Nota</label>
+          <input id="inNote" class="note" placeholder="Nota (facoltativa)">
+        </form>
+        <div class="cats" id="cats" role="radiogroup" aria-label="Categoria"></div>
+        <button class="btn accent wide" type="submit" form="addForm" id="addBtn">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+          <span id="addBtnText">Aggiungi uscita</span>
+        </button>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><h2>Questa settimana</h2><button type="button" class="link" data-go="calendar">Calendario</button></div>
+        <div class="week" id="week"></div>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><h2>Movimenti di oggi</h2><button type="button" class="link" data-go="moves">Vedi tutti</button></div>
+        <ul class="list" id="todayList"></ul>
+      </article>
+    </section>
+
+    <!-- ================= MOVIMENTI ================= -->
+    <section class="view" data-view="moves" hidden>
+      <header class="top"><h1>Movimenti</h1><button class="pill" type="button" data-open-periods><span class="period-name">Periodo</span></button></header>
+      <div class="tabs" role="tablist">
+        <button role="tab" data-filter="all" aria-selected="true">Tutti</button>
+        <button role="tab" data-filter="out" aria-selected="false">Uscite</button>
+        <button role="tab" data-filter="in" aria-selected="false">Entrate</button>
+      </div>
+      <article class="card">
+        <div class="card-head"><h2>Per categoria</h2></div>
+        <div id="catTotals" class="cat-totals"></div>
+      </article>
+      <div id="movesList" class="moves"></div>
+    </section>
+
+    <!-- ================= CALENDARIO ================= -->
+    <section class="view" data-view="calendar" hidden>
+      <header class="top"><h1>Calendario</h1><button class="pill" type="button" data-open-periods><span class="period-name">Periodo</span></button></header>
+
+      <article class="card">
+        <div class="card-head"><h2>Periodo attuale</h2><button type="button" class="link" id="editCurrent">Modifica</button></div>
+        <div class="p-dates" id="pDates"></div>
+        <div class="p-left" id="pLeftDays"></div>
+        <div class="bar"><span id="pBar"></span></div>
+        <div class="p-row num"><span id="pSpent"></span><span id="pLeft"></span></div>
+        <p class="hint num" id="pHint"></p>
+      </article>
+
+      <article class="card">
+        <div class="cal" id="cal"></div>
+        <div class="legend">
+          <span><i class="lg ok"></i>In quota</span>
+          <span><i class="lg zero"></i>Zero spese</span>
+          <span><i class="lg bad"></i>Sforato</span>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><h2 id="dayTitle">Oggi</h2></div>
+        <p class="hint num" id="dayLine"></p>
+        <ul class="list" id="dayList"></ul>
+        <button type="button" class="btn wide" id="addToDay">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          Aggiungi a questo giorno
+        </button>
+      </article>
+    </section>
+
+    <!-- ================= PERIODI ================= -->
+    <section class="view" data-view="periods" hidden>
+      <header class="top"><h1>Periodi</h1></header>
+      <div id="periodList" class="plist"></div>
+      <button class="btn accent wide" id="btnNewPeriod" type="button">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+        Nuovo periodo
+      </button>
+
+      <article class="card">
+        <div class="card-head"><h2>Se spendi più della quota</h2></div>
+        <div class="opts" id="modeOpts" role="radiogroup" aria-label="Se spendi più della quota">
+          <button type="button" class="opt" role="radio" data-mode="riporto" aria-checked="true">
+            <span class="opt-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V13M10 19V9M15 19V11M20 19V5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span>
+            <span class="opt-txt"><b>Recupera</b><span>La quota del giorno resta uguale. Quello che sfori si toglie dai giorni dopo, e l'app ti dice quanti giorni senza spese servono per tornare in pari.</span></span>
+            <span class="radio" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="opt" role="radio" data-mode="ricalcola" aria-checked="false">
+            <span class="opt-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span class="opt-txt"><b>Ricalcola</b><span>Ogni giorno i soldi rimasti vengono divisi per i giorni che mancano. Se sfori la quota scende, se risparmi sale, e arrivi sempre a fine periodo.</span></span>
+            <span class="radio" aria-hidden="true"></span>
+          </button>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><h2>Backup</h2></div>
+        <p class="hint">I dati restano solo su questo telefono. Salva un backup ogni tanto, così non perdi niente se cambi telefono o cancelli i dati del browser.</p>
+        <div class="row">
+          <button class="btn" id="btnExport" type="button">Scarica backup</button>
+          <label class="btn" for="fileImport">Carica backup</label>
+          <input id="fileImport" type="file" accept="application/json,.json" hidden>
+        </div>
+        <p class="hint" id="backupMsg" hidden></p>
+      </article>
+
+      <article class="card" id="installCard">
+        <div class="card-head"><h2>Aggiungi alla schermata Home</h2></div>
+        <p class="hint">iPhone: apri il sito in Safari, tocca Condividi e poi "Aggiungi alla schermata Home". Android: in Chrome tocca il menu ⋮ e poi "Installa app".</p>
+        <button class="btn accent" id="btnInstall" type="button" hidden>Installa Quota</button>
+      </article>
+
+      <p class="tagline">Ogni giorno, il tuo equilibrio.</p>
+    </section>
+
+    <!-- ================= EDITOR PERIODO ================= -->
+    <div class="sheet-wrap" id="sheet" hidden>
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+        <h2 id="sheetTitle">Nuovo periodo</h2>
+        <p class="hint">Scegli tu da quando a quando. I soldi vengono divisi per i giorni: quello che non spendi passa al giorno dopo, le entrate si aggiungono ai giorni che restano.</p>
+        <div class="field"><label for="pName">Nome (facoltativo)</label><input id="pName" placeholder="Es. Stipendio di novembre"></div>
+        <div class="two">
+          <div class="field"><label for="pStart">Dal</label><input id="pStart" type="date"></div>
+          <div class="field"><label for="pEnd">Al</label><input id="pEnd" type="date"></div>
+        </div>
+        <div class="field"><label for="pBase">Soldi all'inizio (€)</label><input id="pBase" class="num" inputmode="decimal" placeholder="Es. 400 — o 0 se arrivano come entrate"></div>
+        <div class="example num" id="pExample"></div>
+        <p class="error" id="pError" hidden></p>
+        <div class="row">
+          <button class="btn accent" id="pSave" type="button">Salva</button>
+          <button class="btn" id="pCancel" type="button">Annulla</button>
+        </div>
+        <div id="pDeleteZone"></div>
+      </div>
+    </div>
+
+    <!-- ================= NAV ================= -->
+    <nav class="nav" aria-label="Sezioni">
+      <button data-nav="today" aria-current="page">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-6 8 6v8a1 1 0 0 1-1 1h-4v-5h-6v5H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        <span>Oggi</span>
+      </button>
+      <button data-nav="moves">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="4.5" cy="6" r="1.2" fill="currentColor"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor"/><circle cx="4.5" cy="18" r="1.2" fill="currentColor"/></svg>
+        <span>Movimenti</span>
+      </button>
+      <button data-nav="calendar">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4 10h16M9 3v4M15 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <span>Calendario</span>
+      </button>
+      <button data-nav="periods">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5 6v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V6M5 12v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6v-6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+        <span>Periodi</span>
+      </button>
+    </nav>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
