@@ -1,6 +1,6 @@
 /* Service worker: fa funzionare Quota anche offline.
    Quando modifichi i file dell'app, aumenta il numero di VERSION così i telefoni scaricano la nuova versione. */
-const VERSION = 'quota-v1';
+const VERSION = 'quota-v2';
 const SHELL = [
   './', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest',
   'icons/symbol.svg', 'icons/symbol-light.svg', 'icons/favicon.svg', 'icons/favicon.png',

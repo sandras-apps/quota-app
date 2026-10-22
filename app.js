@@ -173,6 +173,7 @@
     if (cls) w.classList.add(cls);
     const f = Math.max(0, Math.min(1, frac));
     $('ringArc').setAttribute('stroke-dasharray', (f * 100).toFixed(2) + ' 100');
+    $('ringArc').style.opacity = f > 0.001 ? '1' : '0';
   }
   function setStatus(kind, icon, title, sub) {
     const s = $('status');

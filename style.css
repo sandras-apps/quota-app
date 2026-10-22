@@ -279,5 +279,9 @@ input:focus { border-color: var(--accent); outline: none; }
   background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; font-weight: 600; max-width: calc(100% - 32px);
 }
 
+@media (min-width: 640px) {
+  .sheet-wrap { align-items: center; padding: 24px; }
+  .sheet { border-radius: 26px; max-height: 88vh; padding: 26px; }
+}
 @media (max-width: 360px) { .dd { width: 32px; height: 32px; font-size: 13px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
