@@ -1,9 +1,9 @@
 /* Service worker: fa funzionare Quota anche offline.
    Strategia: prima la rete (così ogni aggiornamento arriva subito), la copia salvata solo se sei offline.
    Quando modifichi i file dell'app, aumenta il numero di VERSION. */
-const VERSION = 'quota-v5';
+const VERSION = 'quota-v6';
 const SHELL = [
-  './', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest',
+  './', 'index.html', 'style.css', 'i18n.js', 'app.js', 'manifest.webmanifest',
   'icons/symbol.svg', 'icons/symbol-light.svg', 'icons/favicon.svg', 'icons/favicon.png',
   'icons/apple-touch-icon.png', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png'
 ];

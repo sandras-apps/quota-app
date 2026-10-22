@@ -6,30 +6,55 @@
   /* ---------------- utilità ---------------- */
   const $ = (id) => document.getElementById(id);
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
-  const eur = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' });
+  /* ---------------- lingua ---------------- */
+  const L = window.QUOTA_I18N;
+  let lang = 'it', loc = 'it-IT', eur;
+  function setLang(id) {
+    const def = L.LANGS.find((x) => x.id === id) || L.LANGS[0];
+    lang = def.id; loc = def.locale;
+    eur = new Intl.NumberFormat(loc, { style: 'currency', currency: 'EUR' });
+    document.documentElement.lang = lang;
+  }
+  function t(key, vars) {
+    let s = (L[lang] && L[lang][key]) != null ? L[lang][key] : (L.it[key] != null ? L.it[key] : key);
+    if (vars) Object.keys(vars).forEach((k) => { s = s.split('{' + k + '}').join(vars[k]); });
+    return s;
+  }
+  const tn = (key, n, vars) => t(key + (n === 1 ? '_one' : '_other'), Object.assign({ n }, vars || {}));
+  function applyStatic() {
+    $$('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+    $$('[data-i18n-ph]').forEach((el) => { el.placeholder = t(el.dataset.i18nPh); });
+    $$('[data-i18n-aria]').forEach((el) => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
+  }
   const money = (v) => eur.format(v);
   const pad = (n) => String(n).padStart(2, '0');
   const ymd = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
   const toD = (s) => new Date(s + 'T00:00:00');
   const diff = (a, b) => Math.round((toD(b) - toD(a)) / 864e5);
   const addDays = (s, n) => { const d = toD(s); d.setDate(d.getDate() + n); return ymd(d); };
-  const short = (s) => toD(s).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
-  const long = (s) => toD(s).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+  const short = (s) => toD(s).toLocaleDateString(loc, { day: 'numeric', month: 'short' });
+  const long = (s) => toD(s).toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long' });
+  const monthYear = (d) => d.toLocaleDateString(loc, { month: 'long', year: 'numeric' });
+  const cap = (x) => x.charAt(0).toUpperCase() + x.slice(1);
+  // nomi dei giorni da lunedì (il 1° gennaio 2024 era lunedì)
+  const weekdays = (style) => Array.from({ length: 7 }, (_, i) => new Date(2024, 0, 1 + i).toLocaleDateString(loc, { weekday: style }));
   const range = (p) => {
     const a = toD(p.start), b = toD(p.end);
     if (a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear())
-      return a.getDate() + '–' + b.getDate() + ' ' + b.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
-    return short(p.start) + ' – ' + b.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
+      return a.getDate() + '–' + b.getDate() + ' ' + monthYear(b);
+    return short(p.start) + ' – ' + b.toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric' });
   };
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const parseAmt = (s) => {
-    let t = String(s).replace(/[€\s]/g, '');
-    if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
-    const v = parseFloat(t);
+    // accetta 12,50 / 12.50 / 1.200,50 / 1,200.50
+    let x = String(s).replace(/[€\s]/g, '');
+    const lc = x.lastIndexOf(','), ld = x.lastIndexOf('.');
+    if (lc > ld) x = x.replace(/\./g, '').replace(',', '.');
+    else if (ld > lc && lc !== -1) x = x.replace(/,/g, '');
+    const v = parseFloat(x);
     return isFinite(v) ? Math.round(v * 100) / 100 : NaN;
   };
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
 
   /* ---------------- icone e categorie ---------------- */
   const I = {
@@ -70,6 +95,7 @@
       { id: 'altro-in', name: 'Altro', icon: 'dots' }
     ]
   };
+  const catName = (c) => t('cat.' + c.id);
   const catOf = (e) => { const l = CATS[e.type === 'in' ? 'in' : 'out']; return l.find((c) => c.id === e.cat) || l[l.length - 1]; };
 
   /* ---------------- stato ---------------- */
@@ -77,9 +103,15 @@
   let state = { periods: [], current: null, entries: {}, settings: { overspend: 'riporto' } };
   try { const raw = localStorage.getItem(KEY); if (raw) state = Object.assign(state, JSON.parse(raw)); } catch (e) { /* storage non disponibile */ }
   state.settings = Object.assign({ overspend: 'riporto' }, state.settings || {});
+  if (!state.settings.lang) {
+    const nav = (navigator.languages && navigator.languages[0]) || navigator.language || 'it';
+    const guess = nav.slice(0, 2).toLowerCase();
+    state.settings.lang = L.LANGS.some((x) => x.id === guess) ? guess : 'it';
+  }
+  setLang(state.settings.lang);
   const save = () => {
     try { localStorage.setItem(KEY, JSON.stringify(state)); }
-    catch (e) { toast('Non riesco a salvare: la memoria del browser è piena o bloccata.'); }
+    catch (e) { toast(t('saveFail')); }
   };
 
   let today = ymd(new Date());
@@ -196,13 +228,13 @@
     $$('.period-name').forEach((el) => { el.textContent = p.name || range(p); });
 
     if (!inPeriod(p, today)) {
-      const t = totals(p);
+      const tot = totals(p);
       const before = today < p.start;
-      $('heroLabel').textContent = before ? 'Inizia il ' + short(p.start) : 'Periodo concluso';
-      $('heroAmt').textContent = (t.left < 0 ? '−' : '') + money(Math.abs(t.left));
-      $('heroSub').textContent = before ? 'da dividere in ' + plural(diff(p.start, p.end) + 1, 'giorno', 'giorni') : (t.left >= 0 ? 'avanzati' : 'oltre il budget');
+      $('heroLabel').textContent = before ? t('hero.startsOn', { date: short(p.start) }) : t('hero.ended');
+      $('heroAmt').textContent = (tot.left < 0 ? '−' : '') + money(Math.abs(tot.left));
+      $('heroSub').textContent = before ? tn('hero.toSplit', diff(p.start, p.end) + 1) : (tot.left >= 0 ? t('hero.saved') : t('hero.overBudget'));
       setRing(before ? 1 : 0, 'idle');
-      setStatus('idle', 'flag', before ? 'Il periodo non è ancora iniziato' : 'Crea il prossimo periodo', before ? 'Puoi già segnare le entrate.' : 'Tocca qui per partire da domani.');
+      setStatus('idle', 'flag', before ? t('st.notStarted') : t('st.next'), before ? t('st.notStartedSub') : t('st.nextSub'));
       $('status').dataset.action = before ? '' : 'new';
     } else {
       $('status').dataset.action = '';
@@ -213,19 +245,19 @@
       const restAfter = recalc ? info.rest - spent : null;
 
       if (recalc && restAfter < 0) {
-        $('heroLabel').textContent = 'Budget superato';
+        $('heroLabel').textContent = t('hero.budgetOver');
         $('heroAmt').textContent = '−' + money(-restAfter);
-        $('heroSub').textContent = 'su tutto il periodo';
+        $('heroSub').textContent = t('hero.wholePeriod');
         setRing(1, 'neg');
       } else if (left < 0) {
-        $('heroLabel').textContent = recalc ? 'Oltre la quota' : 'Sei in rosso';
+        $('heroLabel').textContent = recalc ? t('hero.overQuota') : t('hero.inRed');
         $('heroAmt').textContent = '−' + money(-left);
-        $('heroSub').textContent = 'quota ' + money(info.quota);
+        $('heroSub').textContent = t('hero.quota', { amt: money(info.quota) });
         setRing(1, 'neg');
       } else {
-        $('heroLabel').textContent = 'Oggi puoi spendere';
+        $('heroLabel').textContent = t('hero.canSpend');
         $('heroAmt').textContent = money(left);
-        $('heroSub').textContent = 'di ' + money(info.avail);
+        $('heroSub').textContent = t('hero.of', { amt: money(info.avail) });
         setRing(info.avail > 0 ? left / info.avail : 0);
       }
 
@@ -233,37 +265,37 @@
       const tm = tomorrowIfStop(p, today);
       const last = today === p.end;
       if (recalc && restAfter < 0) {
-        setStatus('neg', 'down', 'Budget del periodo finito', 'Fino al ' + short(p.end) + ' non resta niente, a meno di nuove entrate.');
+        setStatus('neg', 'down', t('st.budgetDone'), t('st.budgetDoneSub', { date: short(p.end) }));
       } else if (left < 0 && recalc) {
-        setStatus('neg', 'down', 'Quota ricalcolata', last ? 'Era l\'ultimo giorno del periodo.' : 'Da domani avrai ' + money(tm) + ' al giorno fino al ' + short(p.end) + '.');
+        setStatus('neg', 'down', t('st.recalc'), last ? t('st.recalcLast') : t('st.recalcSub', { amt: money(tm), date: short(p.end) }));
       } else if (left < 0) {
         const r = recovery(p, today);
-        if (r.days === null) setStatus('neg', 'down', 'Non recuperi entro il ' + short(p.end), 'Mancano ' + money(r.missing) + ' per chiudere il periodo in pari.');
-        else if (r.days === 1) setStatus('neg', 'down', 'Domani torni in pari', 'Se oggi non spendi altro, domani avrai ' + money(r.amount) + '.');
-        else setStatus('neg', 'down', 'Torni in pari in ' + r.days + ' giorni', 'Se non spendi nulla fino al ' + short(addDays(r.date, -1)) + ', il ' + short(r.date) + ' avrai di nuovo ' + money(r.amount) + '.');
+        if (r.days === null) setStatus('neg', 'down', t('st.noRecover', { date: short(p.end) }), t('st.noRecoverSub', { amt: money(r.missing) }));
+        else if (r.days === 1) setStatus('neg', 'down', t('st.tomorrowEven'), t('st.tomorrowEvenSub', { amt: money(r.amount) }));
+        else setStatus('neg', 'down', t('st.evenIn', { n: r.days }), t('st.evenInSub', { until: short(addDays(r.date, -1)), date: short(r.date), amt: money(r.amount) }));
       } else if (spent === 0) {
-        setStatus('zero', '', 'Zero spese, per ora', last ? 'Ultimo giorno: quello che resta è tutto risparmio.' : (recalc ? 'Se resta così, da domani avrai ' + money(tm) + ' al giorno.' : 'Se resta così, domani avrai ' + money(tm) + '.'));
+        setStatus('zero', '', t('st.zero'), last ? t('st.zeroLast') : t(recalc ? 'st.zeroRecalc' : 'st.zeroCarry', { amt: money(tm) }));
       } else {
-        setStatus('', 'up', money(left) + ' rimanenti oggi', last ? 'Ultimo giorno del periodo.' : (recalc ? 'Da domani: ' + money(tm) + ' al giorno.' : 'Se non spendi più nulla, domani avrai ' + money(tm) + '.'));
+        setStatus('', 'up', t('st.left', { amt: money(left) }), last ? t('st.lastDay') : t(recalc ? 'st.leftRecalc' : 'st.leftCarry', { amt: money(tm) }));
       }
     }
 
     // aggiunta
     const d = addDate || today;
     $('addFor').hidden = !addDate || addDate === today;
-    $('addForText').textContent = 'Stai aggiungendo a ' + long(d);
-    $('addBtnText').textContent = type === 'in' ? 'Aggiungi entrata' : 'Aggiungi uscita';
+    $('addForText').textContent = t('add.addingTo', { date: long(d) });
+    $('addBtnText').textContent = type === 'in' ? t('add.btnIn') : t('add.btnOut');
     renderWhen();
 
     renderWeek(p);
     const items = list().filter((e) => e.date === today);
-    $('todayList').innerHTML = items.length ? items.map(itemHTML).join('') : '<li class="empty">Ancora niente oggi.</li>';
+    $('todayList').innerHTML = items.length ? items.map(itemHTML).join('') : '<li class="empty">' + t('today.empty') + '</li>';
   }
 
   function renderWeek(p) {
     const dt = toD(today);
     const monday = addDays(today, -((dt.getDay() + 6) % 7));
-    const names = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+    const names = weekdays('short').map((x) => cap(x.replace('.', '')));
     let h = '';
     for (let i = 0; i < 7; i++) {
       const d = addDays(monday, i);
@@ -279,46 +311,47 @@
     const c = catOf(e);
     return '<li class="item' + (e.type === 'in' ? ' in' : '') + '" data-id="' + e.id + '">' +
       '<span class="ico">' + svg(c.icon) + '</span>' +
-      '<span class="txt"><b>' + esc(e.note || c.name) + '</b><span>' + esc(c.name + (e.type === 'in' ? (isOneOff(e) ? ' · tutto subito' : ' · diviso sui giorni') : '')) + '</span></span>' +
+      '<span class="txt"><b>' + esc(e.note || catName(c)) + '</b><span>' + esc(catName(c) + (e.type === 'in' ? ' · ' + (isOneOff(e) ? t('item.once') : t('item.spread')) : '')) + '</span></span>' +
       '<span class="amt-v num">' + (e.type === 'in' ? '+' : '−') + money(e.amount) + '</span>' +
-      '<button type="button" class="del" aria-label="Elimina">×</button></li>';
+      '<button type="button" class="del" aria-label="' + t('item.delete') + '">×</button></li>';
   }
 
   function renderCats() {
     $('cats').innerHTML = CATS[type].map((c) =>
-      '<button type="button" class="cat" role="radio" aria-checked="' + (c.id === cat) + '" data-cat="' + c.id + '">' + svg(c.icon) + c.name + '</button>'
+      '<button type="button" class="cat" role="radio" aria-checked="' + (c.id === cat) + '" data-cat="' + c.id + '">' + svg(c.icon) + esc(catName(c)) + '</button>'
     ).join('');
   }
 
   /* ---------------- render: Calendario ---------------- */
   function renderCalendarView() {
     const p = cur(); if (!p) return;
-    const t = totals(p);
+    const tot = totals(p);
     $('pDates').textContent = range(p);
     if (inPeriod(p, today)) {
       const dl = diff(today, p.end) + 1;
-      $('pLeftDays').textContent = dl === 1 ? 'Ultimo giorno' : plural(dl, 'giorno rimanente', 'giorni rimanenti');
-    } else $('pLeftDays').textContent = today < p.start ? 'Non ancora iniziato' : 'Concluso';
+      $('pLeftDays').textContent = dl === 1 ? t('cal.lastDay') : tn('cal.daysLeft', dl);
+    } else $('pLeftDays').textContent = today < p.start ? t('cal.notStarted') : t('cal.ended');
     const bar = $('pBar');
-    bar.style.width = (t.tin > 0 ? Math.min(100, t.tout / t.tin * 100) : (t.tout ? 100 : 0)) + '%';
-    bar.parentElement.classList.toggle('over', t.left < 0);
-    $('pSpent').textContent = money(t.tout) + ' di ' + money(t.tin);
-    $('pLeft').textContent = (t.left < 0 ? 'oltre di ' + money(-t.left) : 'restano ' + money(t.left));
-    $('pLeft').style.color = t.left < 0 ? 'var(--neg-ink)' : '';
+    bar.style.width = (tot.tin > 0 ? Math.min(100, tot.tout / tot.tin * 100) : (tot.tout ? 100 : 0)) + '%';
+    bar.parentElement.classList.toggle('over', tot.left < 0);
+    $('pSpent').textContent = t('cal.spentOf', { a: money(tot.tout), b: money(tot.tin) });
+    $('pLeft').textContent = tot.left < 0 ? t('cal.over', { amt: money(-tot.left) }) : t('cal.left', { amt: money(tot.left) });
+    $('pLeft').style.color = tot.left < 0 ? 'var(--neg-ink)' : '';
     if (inPeriod(p, today) && today < p.end) {
       const tm = tomorrowIfStop(p, today);
       const avg = mode() === 'ricalcola' ? tm : (accrued(p, p.end) - outBefore(addDays(today, 1))) / diff(today, p.end);
-      $('pHint').textContent = money(Math.max(0, avg)) + ' al giorno da domani' + (mode() === 'ricalcola' ? ' (ricalcolata)' : ' (in media)');
+      $('pHint').textContent = t(mode() === 'ricalcola' ? 'cal.perDayRecalc' : 'cal.perDayAvg', { amt: money(Math.max(0, avg)) });
     } else $('pHint').textContent = '';
 
     // calendario
     let h = '';
+    const initials = weekdays('narrow');
     let d = p.start, first = true;
     while (d <= p.end) {
       const dt = toD(d);
       if (first || dt.getDate() === 1) {
-        h += '<div class="mlabel">' + dt.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' }) + '</div>';
-        ['L', 'M', 'M', 'G', 'V', 'S', 'D'].forEach((x) => { h += '<div class="dow">' + x + '</div>'; });
+        h += '<div class="mlabel">' + cap(monthYear(dt)) + '</div>';
+        initials.forEach((x) => { h += '<div class="dow">' + x + '</div>'; });
         const lead = (dt.getDay() + 6) % 7;
         for (let i = 0; i < lead; i++) h += '<div></div>';
         first = false;
@@ -327,25 +360,26 @@
       const cls = ['dd', st];
       if (d === today) cls.push('today');
       if (d === selDate) cls.push('sel');
-      h += '<button type="button" data-day="' + d + '" aria-label="' + long(d) + ', speso ' + money(outOn(d)) + '"><span class="' + cls.join(' ') + '">' + dt.getDate() + '</span></button>';
+      h += '<button type="button" data-day="' + d + '" aria-label="' + t('cal.dayAria', { date: long(d), amt: money(outOn(d)) }) + '"><span class="' + cls.join(' ') + '">' + dt.getDate() + '</span></button>';
       d = addDays(d, 1);
     }
     $('cal').innerHTML = h;
 
     // giorno selezionato
-    $('dayTitle').textContent = selDate === today ? 'Oggi' : long(selDate);
+    $('dayTitle').textContent = selDate === today ? t('cal.today') : long(selDate);
     const info = dayInfo(p, selDate), s = outOn(selDate), avail = info.avail;
     let line = '';
     if (inPeriod(p, selDate)) {
-      line = 'Disponibili ' + money(avail) + ' · spesi ' + money(s);
+      line = t('cal.dayLine', { avail: money(avail), spent: money(s) });
       if (selDate <= today) {
-        if (mode() === 'ricalcola') line += avail - s >= 0 ? ' · avanzano ' + money(avail - s) + ', ridivisi sui giorni dopo' : ' · ' + money(s - avail) + ' in più, tolti dai giorni dopo';
-        else line += avail - s >= 0 ? ' · passano ' + money(avail - s) + ' al giorno dopo' : ' · il giorno dopo hai ' + money(s - avail) + ' in meno';
+        const ok = avail - s >= 0, amt = money(Math.abs(avail - s));
+        if (mode() === 'ricalcola') line += t(ok ? 'cal.dayRecalcLeft' : 'cal.dayRecalcOver', { amt });
+        else line += t(ok ? 'cal.dayCarryLeft' : 'cal.dayCarryOver', { amt });
       }
     }
     $('dayLine').textContent = line;
     const items = list().filter((e) => e.date === selDate);
-    $('dayList').innerHTML = items.length ? items.map(itemHTML).join('') : '<li class="empty">Niente segnato in questo giorno.</li>';
+    $('dayList').innerHTML = items.length ? items.map(itemHTML).join('') : '<li class="empty">' + t('cal.dayEmpty') + '</li>';
   }
 
   /* ---------------- render: Movimenti ---------------- */
@@ -361,15 +395,15 @@
     const arr = Object.values(groups).sort((a, b) => b.v - a.v);
     const max = arr.reduce((m, g) => Math.max(m, g.v), 0);
     $('catTotals').innerHTML = arr.length ? arr.map((g) =>
-      '<div class="ct' + (g.in ? ' in' : '') + '"><span class="ico">' + svg(g.c.icon) + '</span><span class="n">' + g.c.name + '</span><span class="v num">' + money(g.v) + '</span>' +
+      '<div class="ct' + (g.in ? ' in' : '') + '"><span class="ico">' + svg(g.c.icon) + '</span><span class="n">' + esc(catName(g.c)) + '</span><span class="v num">' + money(g.v) + '</span>' +
       '<div class="bar"><span style="width:' + (g.v / max * 100) + '%"></span></div></div>'
-    ).join('') : '<p class="empty">Ancora nessun movimento in questo periodo.</p>';
+    ).join('') : '<p class="empty">' + t('moves.empty') + '</p>';
 
     const byDay = {};
     items.forEach((e) => { (byDay[e.date] = byDay[e.date] || []).push(e); });
     $('movesList').innerHTML = Object.keys(byDay).sort().reverse().map((d) => {
       const net = byDay[d].reduce((a, e) => a + (e.type === 'in' ? e.amount : -e.amount), 0);
-      return '<div class="group"><h3><span>' + (d === today ? 'Oggi' : long(d)) + '</span><span class="num">' + (net >= 0 ? '+' : '−') + money(Math.abs(net)) + '</span></h3>' +
+      return '<div class="group"><h3><span>' + (d === today ? t('cal.today') : long(d)) + '</span><span class="num">' + (net >= 0 ? '+' : '−') + money(Math.abs(net)) + '</span></h3>' +
         '<div class="card"><ul class="list">' + byDay[d].map(itemHTML).join('') + '</ul></div></div>';
     }).join('');
   }
@@ -379,15 +413,17 @@
     const ps = state.periods.slice().sort((a, b) => b.start.localeCompare(a.start));
     $('periodList').innerHTML = ps.length ? ps.map((p) =>
       '<div class="pitem' + (p.id === state.current ? ' cur' : '') + '" data-pid="' + p.id + '" role="button" tabindex="0">' +
-      '<span class="txt"><b>' + esc(p.name || range(p)) + '</b><span>' + short(p.start) + ' → ' + short(p.end) + ' · ' + plural(diff(p.start, p.end) + 1, 'giorno', 'giorni') + '</span></span>' +
-      (inPeriod(p, today) ? '<span class="tag">in corso</span>' : '') +
-      '<button type="button" class="link" data-edit="' + p.id + '">Modifica</button></div>'
-    ).join('') : '<p class="empty">Nessun periodo. Creane uno per iniziare.</p>';
+      '<span class="txt"><b>' + esc(p.name || range(p)) + '</b><span>' + short(p.start) + ' → ' + short(p.end) + ' · ' + tn('per.days', diff(p.start, p.end) + 1) + '</span></span>' +
+      (inPeriod(p, today) ? '<span class="tag">' + t('per.live') + '</span>' : '') +
+      '<button type="button" class="link" data-edit="' + p.id + '">' + t('per.edit') + '</button></div>'
+    ).join('') : '<p class="empty">' + t('per.empty') + '</p>';
+    $('langOpts').innerHTML = L.LANGS.map((x) => '<button type="button" role="radio" lang="' + x.id + '" data-lang="' + x.id + '" aria-checked="' + (x.id === lang) + '">' + x.name + '</button>').join('');
     $$('#modeOpts [data-mode]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.mode === mode())));
     if (typeof renderBackup === 'function') renderBackup();
   }
 
   function renderAll() {
+    applyStatic();
     renderCats();
     renderToday();
     renderCalendarView();
@@ -426,24 +462,23 @@
   function renderWhen() {
     $('when').hidden = type !== 'in';
     $$('#when [data-spread]').forEach((x) => x.setAttribute('aria-pressed', String((x.dataset.spread === '1') === spread)));
-    const d = addDate && addDate !== today ? 'quel giorno' : 'oggi';
     $('whenHint').textContent = spread
-      ? 'Si divide sui giorni che restano fino alla fine del periodo. Ideale per lo stipendio.'
-      : 'Si aggiunge tutto a quello che puoi spendere ' + d + '. Ideale per un rimborso.';
+      ? t('add.spreadHint')
+      : t(addDate && addDate !== today ? 'add.onceHintDay' : 'add.onceHintToday');
   }
   $$('#when [data-spread]').forEach((x) => x.addEventListener('click', () => { spread = x.dataset.spread === '1'; renderWhen(); }));
   $('addForm').addEventListener('submit', (ev) => {
     ev.preventDefault();
     if (!cur()) { openEditor(null); return; }
     const v = parseAmt($('inAmt').value);
-    if (!(v > 0)) { $('inAmt').focus(); $('inAmt').placeholder = 'Importo?'; return; }
+    if (!(v > 0)) { $('inAmt').focus(); $('inAmt').placeholder = t('add.amountMissing'); return; }
     const d = addDate || today;
     const entry = { id: uid(), date: d, amount: v, type, cat, note: $('inNote').value.trim() };
     if (type === 'in') entry.spread = spread;
     list().push(entry);
     save();
     $('inAmt').value = ''; $('inNote').value = ''; $('inAmt').blur();
-    toast((type === 'in' ? 'Entrata aggiunta' : 'Uscita aggiunta') + (d !== today ? ' al ' + short(d) : ''));
+    toast(d !== today ? t(type === 'in' ? 'add.doneInOn' : 'add.doneOutOn', { date: short(d) }) : t(type === 'in' ? 'add.doneIn' : 'add.doneOut'));
     if (addDate) { selDate = addDate; addDate = null; }
     renderAll();
   });
@@ -465,10 +500,10 @@
     const del = ev.target.closest('.del'); if (!del) return;
     const li = del.closest('.item'), id = li.dataset.id;
     const e = list().find((x) => x.id === id); if (!e) return;
-    li.innerHTML = '<div class="confirm"><span>Eliminare ' + money(e.amount) + '?</span><button type="button" class="btn danger" data-yes>Elimina</button><button type="button" class="btn" data-no>No</button></div>';
+    li.innerHTML = '<div class="confirm"><span>' + t('item.confirm', { amt: money(e.amount) }) + '</span><button type="button" class="btn danger" data-yes>' + t('item.yes') + '</button><button type="button" class="btn" data-no>' + t('item.no') + '</button></div>';
     li.querySelector('[data-yes]').addEventListener('click', () => {
       state.entries[state.current] = list().filter((x) => x.id !== id);
-      save(); toast('Eliminato'); renderAll();
+      save(); toast(t('item.deleted')); renderAll();
     });
     li.querySelector('[data-no]').addEventListener('click', renderAll);
   }
@@ -484,7 +519,11 @@
   $('modeOpts').addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-mode]'); if (!b) return;
     state.settings.overspend = b.dataset.mode; save(); renderAll();
-    toast(b.dataset.mode === 'ricalcola' ? 'La quota ora si ricalcola ogni giorno' : 'La quota ora resta fissa e recuperi gli sforamenti');
+    toast(b.dataset.mode === 'ricalcola' ? t('mode.toastRecalc') : t('mode.toastRecover'));
+  });
+  $('langOpts').addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-lang]'); if (!b) return;
+    state.settings.lang = b.dataset.lang; save(); setLang(b.dataset.lang); renderAll();
   });
 
   /* ---------------- periodi ---------------- */
@@ -512,7 +551,7 @@
   }
   function openEditor(p) {
     editingId = p ? p.id : null;
-    $('sheetTitle').textContent = p ? 'Modifica periodo' : 'Nuovo periodo';
+    $('sheetTitle').textContent = p ? t('sh.edit') : t('sh.new');
     const sug = p || suggestNext();
     $('pName').value = p ? (p.name || '') : '';
     $('pStart').value = sug.start; $('pEnd').value = sug.end;
@@ -521,9 +560,9 @@
     $('pCancel').hidden = !state.periods.length;
     $('pRestore').hidden = state.periods.length > 0;
     const z = $('pDeleteZone');
-    z.innerHTML = p ? '<button type="button" class="btn" id="pDel">Elimina periodo</button>' : '';
+    z.innerHTML = p ? '<button type="button" class="btn" id="pDel">' + t('sh.delete') + '</button>' : '';
     if (p) $('pDel').addEventListener('click', () => {
-      z.innerHTML = '<div class="confirm"><span>Eliminare il periodo e tutti i suoi movimenti?</span><button type="button" class="btn danger" id="pDelYes">Elimina</button></div>';
+      z.innerHTML = '<div class="confirm"><span>' + t('sh.deleteConfirm') + '</span><button type="button" class="btn danger" id="pDelYes">' + t('sh.deleteYes') + '</button></div>';
       $('pDelYes').addEventListener('click', () => {
         state.periods = state.periods.filter((x) => x.id !== p.id);
         delete state.entries[p.id];
@@ -539,25 +578,25 @@
   function closeEditor() { $('sheet').hidden = true; document.body.style.overflow = ''; }
   function updateExample() {
     const s = $('pStart').value, e = $('pEnd').value, b = parseAmt($('pBase').value);
-    if (!s || !e || e < s) { $('pExample').textContent = 'La data di fine deve essere uguale o successiva all\'inizio.'; return; }
-    const n = diff(s, e) + 1, q = (b > 0 ? b : 0) / n;
+    if (!s || !e || e < s) { $('pExample').textContent = t('sh.badDates'); return; }
+    const n = diff(s, e) + 1, q = (b > 0 ? b : 0) / n, days = tn('per.days', n);
     $('pExample').innerHTML = b > 0
-      ? plural(n, 'giorno', 'giorni') + ' → <b>' + money(q) + '</b> al giorno. Se un giorno non spendi niente, il giorno dopo hai <b>' + money(q * 2) + '</b>.'
-      : plural(n, 'giorno', 'giorni') + '. Ogni entrata che segni viene divisa tra i giorni che restano fino alla fine.';
+      ? t('sh.example', { days, q: money(q), q2: money(q * 2) })
+      : t('sh.exampleNoBase', { days });
   }
   ['pStart', 'pEnd', 'pBase'].forEach((id) => $(id).addEventListener('input', updateExample));
   $('pCancel').addEventListener('click', closeEditor);
   $('sheet').addEventListener('click', (ev) => { if (ev.target === $('sheet') && state.periods.length) closeEditor(); });
   $('pSave').addEventListener('click', () => {
     const s = $('pStart').value, e = $('pEnd').value, b = parseAmt($('pBase').value);
-    if (!s || !e || e < s) { $('pError').textContent = 'Controlla le date: la fine deve essere uguale o successiva all\'inizio.'; $('pError').hidden = false; return; }
+    if (!s || !e || e < s) { $('pError').textContent = t('sh.badDatesErr'); $('pError').hidden = false; return; }
     const data = { name: $('pName').value.trim(), start: s, end: e, base: b > 0 ? b : 0 };
     if (editingId) { Object.assign(state.periods.find((p) => p.id === editingId), data); state.current = editingId; }
     else { const id = uid(); state.periods.push(Object.assign({ id }, data)); state.current = id; state.entries[id] = []; }
     save(); closeEditor();
     selDate = clampSel(cur()); addDate = null;
     renderAll(); go('today');
-    toast('Periodo salvato');
+    toast(t('sh.saved'));
   });
   function pickCurrent() {
     const live = state.periods.find((p) => inPeriod(p, today));
@@ -572,9 +611,9 @@
   function markBackup() { state.settings.lastBackup = today; save(); renderBackup(); }
   function renderBackup() {
     const last = state.settings.lastBackup, el = $('backupLast');
-    if (!last) { el.textContent = 'Non hai ancora fatto un backup.'; el.classList.toggle('old', state.periods.length > 0); return; }
+    if (!last) { el.textContent = t('bk.never'); el.classList.toggle('old', state.periods.length > 0); return; }
     const n = diff(last, today);
-    el.textContent = 'Ultimo backup: ' + (n <= 0 ? 'oggi' : n === 1 ? 'ieri' : n + ' giorni fa') + '.';
+    el.textContent = t('bk.last', { when: n <= 0 ? t('bk.today') : n === 1 ? t('bk.yesterday') : t('bk.daysAgo', { n }) });
     el.classList.toggle('old', n > 14);
   }
   // Invia backup: usa il menu di condivisione del telefono (WhatsApp, email, Drive…)
@@ -585,9 +624,9 @@
   $('btnShare').addEventListener('click', async () => {
     try {
       const file = new File([backupText()], backupName(), { type: 'application/json' });
-      await navigator.share({ files: [file], title: 'Backup Quota', text: 'Backup di Quota del ' + short(today) });
-      markBackup(); toast('Backup inviato');
-    } catch (e) { if (e && e.name !== 'AbortError') toast('Non riesco a condividere: usa "Scarica backup".'); }
+      await navigator.share({ files: [file], title: t('bk.shareTitle'), text: t('bk.shareText', { date: short(today) }) });
+      markBackup(); toast(t('bk.sent'));
+    } catch (e) { if (e && e.name !== 'AbortError') toast(t('bk.shareFail')); }
   });
   $('btnExport').addEventListener('click', () => {
     const blob = new Blob([backupText()], { type: 'application/json' });
@@ -605,16 +644,16 @@
       const j = JSON.parse(await f.text());
       const d = j && j.data;
       if (!d || !Array.isArray(d.periods) || typeof d.entries !== 'object') throw new Error('formato');
-      state = { periods: d.periods, current: d.current, entries: d.entries, settings: Object.assign({ overspend: 'riporto' }, d.settings || state.settings) };
+      state = { periods: d.periods, current: d.current, entries: d.entries, settings: Object.assign({ overspend: 'riporto' }, d.settings || state.settings, { lang: state.settings.lang }) };
       if (!cur()) state.current = pickCurrent();
       save();
       selDate = cur() ? clampSel(cur()) : today;
       renderAll();
-      msg.textContent = 'Backup caricato: ' + plural(state.periods.length, 'periodo', 'periodi') + '.';
+      msg.textContent = tn('bk.loaded', state.periods.length) + '.';
       if (!$('sheet').hidden && cur()) { closeEditor(); go('today'); }
-      toast('Backup caricato: ' + plural(state.periods.length, 'periodo', 'periodi'));
+      toast(tn('bk.loaded', state.periods.length));
     } catch (e) {
-      msg.textContent = 'Questo file non è un backup di Quota. Scegli il file .json scaricato con "Scarica backup".';
+      msg.textContent = t('bk.bad');
     }
     msg.hidden = false;
     ev.target.value = '';

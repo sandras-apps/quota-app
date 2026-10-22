@@ -19,6 +19,7 @@ Quota è un'app di budget giornaliero. Scegli un periodo (per esempio da uno sti
   - **Ricalcola**: quello che resta viene ridiviso sui giorni che mancano, così arrivi sempre a fine periodo.
 - Le **entrate** vengono divise tra i giorni che restano.
 - Calendario con tre stati riconoscibili anche dalla forma: cerchio pieno (in quota), cerchio vuoto (zero spese), cerchio con punto (sforato).
+- In **italiano, inglese e spagnolo** (si sceglie in *Periodi → Lingua*).
 - Tema chiaro e scuro automatici, funziona **offline**, si installa sulla schermata Home.
 - Gratuita, **senza account**: i dati restano sul telefono.
 
@@ -36,6 +37,7 @@ Quota è un'app di budget giornaliero. Scegli un periodo (per esempio da uno sti
 |---|---|
 | `index.html` | Struttura dell'app (Oggi, Movimenti, Calendario, Periodi) |
 | `style.css` | Colori, font e layout, tema chiaro e scuro |
+| `i18n.js` | Tutti i testi in italiano, inglese e spagnolo |
 | `app.js` | Logica: periodi, movimenti, quota, riporto, backup |
 | `manifest.webmanifest` | Nome, colori e icone per l'installazione |
 | `sw.js` | Service worker per l'uso offline |
@@ -45,7 +47,7 @@ Quota è un'app di budget giornaliero. Scegli un periodo (per esempio da uno sti
 Nessuna build: è HTML, CSS e JavaScript puro, pubblicato con GitHub Pages dal branch `main`.
 
 ## Aggiornare l'app
-Dopo ogni modifica, in `sw.js` aumenta il numero in `const VERSION = 'quota-v3';` (`quota-v4`, `quota-v5`…), così i telefoni scaricano la nuova versione.
+Dopo ogni modifica, in `sw.js` aumenta il numero in `const VERSION = 'quota-v6';` (`quota-v7`, `quota-v8`…), così i telefoni scaricano la nuova versione.
 
 ## Identità
 

@@ -30,7 +30,7 @@
           <picture><source srcset="icons/symbol-light.svg" media="(prefers-color-scheme: dark)"><img src="icons/symbol.svg" alt="" width="34" height="20"></picture>
           <span>quota</span>
         </div>
-        <button class="pill" type="button" data-open-periods><span class="period-name">Periodo</span>
+        <button class="pill" type="button" data-open-periods><span class="period-name" data-i18n="period">Periodo</span>
           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
       </header>
@@ -41,7 +41,7 @@
           <circle class="ring-arc" id="ringArc" cx="100" cy="100" r="88" pathLength="100" stroke-dasharray="0 100"/>
         </svg>
         <div class="ring-text">
-          <span class="ring-label" id="heroLabel">Oggi puoi spendere</span>
+          <span class="ring-label" id="heroLabel"></span>
           <span class="ring-amt num" id="heroAmt">0 €</span>
           <span class="ring-sub num" id="heroSub"></span>
         </div>
@@ -56,25 +56,25 @@
       <article class="card add" id="addCard">
         <div class="add-for" id="addFor" hidden>
           <span id="addForText"></span>
-          <button type="button" class="link" id="addForReset">Torna a oggi</button>
+          <button type="button" class="link" id="addForReset" data-i18n="add.backToday">Torna a oggi</button>
         </div>
-        <div class="seg" role="group" aria-label="Tipo di movimento">
+        <div class="seg" role="group" aria-label="Tipo di movimento" data-i18n-aria="add.typeGroup">
           <button type="button" data-type="out" aria-pressed="true">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Uscita</button>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n="add.out">Uscita</span></button>
           <button type="button" data-type="in" aria-pressed="false">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Entrata</button>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n="add.in">Entrata</span></button>
         </div>
         <form id="addForm" class="add-row" autocomplete="off">
-          <label class="sr" for="inAmt">Importo</label>
-          <input id="inAmt" class="amt num" inputmode="decimal" placeholder="0,00 €">
-          <label class="sr" for="inNote">Nota</label>
-          <input id="inNote" class="note" placeholder="Nota (facoltativa)">
+          <label class="sr" for="inAmt" data-i18n="add.amount">Importo</label>
+          <input id="inAmt" class="amt num" inputmode="decimal" placeholder="0,00 €" data-i18n-ph="add.amountPh">
+          <label class="sr" for="inNote" data-i18n="add.note">Nota</label>
+          <input id="inNote" class="note" placeholder="Nota (facoltativa)" data-i18n-ph="add.notePh">
         </form>
-        <div class="cats" id="cats" role="radiogroup" aria-label="Categoria"></div>
+        <div class="cats" id="cats" role="radiogroup" aria-label="Categoria" data-i18n-aria="add.catGroup"></div>
         <div class="when" id="when" hidden>
-          <div class="seg seg-sm" role="group" aria-label="Quando conta questa entrata">
-            <button type="button" data-spread="0" aria-pressed="false">Tutto subito</button>
-            <button type="button" data-spread="1" aria-pressed="true">Diviso sui giorni</button>
+          <div class="seg seg-sm" role="group" aria-label="Quando conta questa entrata" data-i18n-aria="add.whenGroup">
+            <button type="button" data-spread="0" aria-pressed="false" data-i18n="add.once">Tutto subito</button>
+            <button type="button" data-spread="1" aria-pressed="true" data-i18n="add.spread">Diviso sui giorni</button>
           </div>
           <p class="hint" id="whenHint"></p>
         </div>
@@ -85,26 +85,26 @@
       </article>
 
       <article class="card">
-        <div class="card-head"><h2>Questa settimana</h2><button type="button" class="link" data-go="calendar">Calendario</button></div>
+        <div class="card-head"><h2 data-i18n="week.title">Questa settimana</h2><button type="button" class="link" data-go="calendar" data-i18n="week.toCalendar">Calendario</button></div>
         <div class="week" id="week"></div>
       </article>
 
       <article class="card">
-        <div class="card-head"><h2>Movimenti di oggi</h2><button type="button" class="link" data-go="moves">Vedi tutti</button></div>
+        <div class="card-head"><h2 data-i18n="today.moves">Movimenti di oggi</h2><button type="button" class="link" data-go="moves" data-i18n="today.seeAll">Vedi tutti</button></div>
         <ul class="list" id="todayList"></ul>
       </article>
     </section>
 
     <!-- ================= MOVIMENTI ================= -->
     <section class="view" data-view="moves" hidden>
-      <header class="top"><h1>Movimenti</h1><button class="pill" type="button" data-open-periods><span class="period-name">Periodo</span></button></header>
+      <header class="top"><h1 data-i18n="moves.title">Movimenti</h1><button class="pill" type="button" data-open-periods><span class="period-name" data-i18n="period">Periodo</span></button></header>
       <div class="tabs" role="tablist">
-        <button role="tab" data-filter="all" aria-selected="true">Tutti</button>
-        <button role="tab" data-filter="out" aria-selected="false">Uscite</button>
-        <button role="tab" data-filter="in" aria-selected="false">Entrate</button>
+        <button role="tab" data-filter="all" aria-selected="true" data-i18n="moves.all">Tutti</button>
+        <button role="tab" data-filter="out" aria-selected="false" data-i18n="moves.out">Uscite</button>
+        <button role="tab" data-filter="in" aria-selected="false" data-i18n="moves.in">Entrate</button>
       </div>
       <article class="card">
-        <div class="card-head"><h2>Per categoria</h2></div>
+        <div class="card-head"><h2 data-i18n="moves.byCat">Per categoria</h2></div>
         <div id="catTotals" class="cat-totals"></div>
       </article>
       <div id="movesList" class="moves"></div>
@@ -112,10 +112,10 @@
 
     <!-- ================= CALENDARIO ================= -->
     <section class="view" data-view="calendar" hidden>
-      <header class="top"><h1>Calendario</h1><button class="pill" type="button" data-open-periods><span class="period-name">Periodo</span></button></header>
+      <header class="top"><h1 data-i18n="cal.title">Calendario</h1><button class="pill" type="button" data-open-periods><span class="period-name" data-i18n="period">Periodo</span></button></header>
 
       <article class="card">
-        <div class="card-head"><h2>Periodo attuale</h2><button type="button" class="link" id="editCurrent">Modifica</button></div>
+        <div class="card-head"><h2 data-i18n="cal.current">Periodo attuale</h2><button type="button" class="link" id="editCurrent" data-i18n="cal.edit">Modifica</button></div>
         <div class="p-dates" id="pDates"></div>
         <div class="p-left" id="pLeftDays"></div>
         <div class="bar"><span id="pBar"></span></div>
@@ -126,9 +126,9 @@
       <article class="card">
         <div class="cal" id="cal"></div>
         <div class="legend">
-          <span><i class="lg ok"></i>In quota</span>
-          <span><i class="lg zero"></i>Zero spese</span>
-          <span><i class="lg bad"></i>Sforato</span>
+          <span><i class="lg ok"></i><span data-i18n="cal.legendOk">In quota</span></span>
+          <span><i class="lg zero"></i><span data-i18n="cal.legendZero">Zero spese</span></span>
+          <span><i class="lg bad"></i><span data-i18n="cal.legendBad">Sforato</span></span>
         </div>
       </article>
 
@@ -138,96 +138,101 @@
         <ul class="list" id="dayList"></ul>
         <button type="button" class="btn wide" id="addToDay">
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-          Aggiungi a questo giorno
+          <span data-i18n="cal.addToDay">Aggiungi a questo giorno</span>
         </button>
       </article>
     </section>
 
     <!-- ================= PERIODI ================= -->
     <section class="view" data-view="periods" hidden>
-      <header class="top"><h1>Periodi</h1></header>
+      <header class="top"><h1 data-i18n="per.title">Periodi</h1></header>
       <div id="periodList" class="plist"></div>
       <button class="btn accent wide" id="btnNewPeriod" type="button">
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
-        Nuovo periodo
+        <span data-i18n="per.new">Nuovo periodo</span>
       </button>
 
       <article class="card">
-        <div class="card-head"><h2>Se spendi più della quota</h2></div>
-        <div class="opts" id="modeOpts" role="radiogroup" aria-label="Se spendi più della quota">
+        <div class="card-head"><h2 data-i18n="mode.title">Se spendi più della quota</h2></div>
+        <div class="opts" id="modeOpts" role="radiogroup" aria-label="Se spendi più della quota" data-i18n-aria="mode.title">
           <button type="button" class="opt" role="radio" data-mode="riporto" aria-checked="true">
             <span class="opt-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V13M10 19V9M15 19V11M20 19V5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span>
-            <span class="opt-txt"><b>Recupera</b><span>La quota del giorno resta uguale. Quello che sfori si toglie dai giorni dopo, e l'app ti dice quanti giorni senza spese servono per tornare in pari.</span></span>
+            <span class="opt-txt"><b data-i18n="mode.recover">Recupera</b><span data-i18n="mode.recoverDesc">La quota del giorno resta uguale. Quello che sfori si toglie dai giorni dopo, e l'app ti dice quanti giorni senza spese servono per tornare in pari.</span></span>
             <span class="radio" aria-hidden="true"></span>
           </button>
           <button type="button" class="opt" role="radio" data-mode="ricalcola" aria-checked="false">
             <span class="opt-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <span class="opt-txt"><b>Ricalcola</b><span>Ogni giorno i soldi rimasti vengono divisi per i giorni che mancano. Se sfori la quota scende, se risparmi sale, e arrivi sempre a fine periodo.</span></span>
+            <span class="opt-txt"><b data-i18n="mode.recalc">Ricalcola</b><span data-i18n="mode.recalcDesc">Ogni giorno i soldi rimasti vengono divisi per i giorni che mancano. Se sfori la quota scende, se risparmi sale, e arrivi sempre a fine periodo.</span></span>
             <span class="radio" aria-hidden="true"></span>
           </button>
         </div>
       </article>
 
       <article class="card">
-        <div class="card-head"><h2>Backup</h2></div>
-        <p class="hint">I dati restano solo su questo telefono. Per passare a un altro telefono: qui crei il backup e te lo mandi (WhatsApp, email, Drive), sull'altro telefono lo carichi.</p>
+        <div class="card-head"><h2 data-i18n="lang.title">Lingua</h2></div>
+        <div class="langs" id="langOpts" role="radiogroup" aria-label="Lingua" data-i18n-aria="lang.title"></div>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><h2 data-i18n="bk.title">Backup</h2></div>
+        <p class="hint" data-i18n="bk.desc">I dati restano solo su questo telefono. Per passare a un altro telefono: qui crei il backup e te lo mandi (WhatsApp, email, Drive), sull'altro telefono lo carichi.</p>
         <p class="backup-last" id="backupLast"></p>
         <div class="row">
-          <button class="btn accent" id="btnShare" type="button" hidden>Invia backup</button>
-          <button class="btn" id="btnExport" type="button">Scarica backup</button>
-          <label class="btn" for="fileImport">Carica backup</label>
+          <button class="btn accent" id="btnShare" type="button" hidden data-i18n="bk.share">Invia backup</button>
+          <button class="btn" id="btnExport" type="button" data-i18n="bk.download">Scarica backup</button>
+          <label class="btn" for="fileImport" data-i18n="bk.load">Carica backup</label>
         </div>
         <p class="hint" id="backupMsg" hidden></p>
       </article>
 
       <article class="card" id="installCard">
-        <div class="card-head"><h2>Aggiungi alla schermata Home</h2></div>
-        <p class="hint">iPhone: apri il sito in Safari, tocca Condividi e poi "Aggiungi alla schermata Home". Android: in Chrome tocca il menu ⋮ e poi "Installa app".</p>
-        <button class="btn accent" id="btnInstall" type="button" hidden>Installa Quota</button>
+        <div class="card-head"><h2 data-i18n="inst.title">Aggiungi alla schermata Home</h2></div>
+        <p class="hint" data-i18n="inst.desc">iPhone: apri il sito in Safari, tocca Condividi e poi "Aggiungi alla schermata Home". Android: in Chrome tocca il menu ⋮ e poi "Installa app".</p>
+        <button class="btn accent" id="btnInstall" type="button" hidden data-i18n="inst.btn">Installa Quota</button>
       </article>
 
-      <p class="tagline">Ogni giorno, il tuo equilibrio.</p>
+      <p class="tagline" data-i18n="tagline">Ogni giorno, il tuo equilibrio.</p>
     </section>
 
     <!-- ================= EDITOR PERIODO ================= -->
     <div class="sheet-wrap" id="sheet" hidden>
       <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
         <h2 id="sheetTitle">Nuovo periodo</h2>
-        <p class="hint">Scegli tu da quando a quando. I soldi vengono divisi per i giorni: quello che non spendi passa al giorno dopo, le entrate si aggiungono ai giorni che restano.</p>
-        <div class="field"><label for="pName">Nome (facoltativo)</label><input id="pName" placeholder="Es. Stipendio di novembre"></div>
+        <p class="hint" data-i18n="sh.desc">Scegli tu da quando a quando. I soldi vengono divisi per i giorni: quello che non spendi passa al giorno dopo, le entrate si aggiungono ai giorni che restano.</p>
+        <div class="field"><label for="pName" data-i18n="sh.name">Nome (facoltativo)</label><input id="pName" placeholder="Es. Stipendio di novembre" data-i18n-ph="sh.namePh"></div>
         <div class="two">
-          <div class="field"><label for="pStart">Dal</label><input id="pStart" type="date"></div>
-          <div class="field"><label for="pEnd">Al</label><input id="pEnd" type="date"></div>
+          <div class="field"><label for="pStart" data-i18n="sh.from">Dal</label><input id="pStart" type="date"></div>
+          <div class="field"><label for="pEnd" data-i18n="sh.to">Al</label><input id="pEnd" type="date"></div>
         </div>
-        <div class="field"><label for="pBase">Soldi all'inizio (€)</label><input id="pBase" class="num" inputmode="decimal" placeholder="Es. 400 — o 0 se arrivano come entrate"></div>
+        <div class="field"><label for="pBase" data-i18n="sh.base">Soldi all'inizio (€)</label><input id="pBase" class="num" inputmode="decimal" placeholder="Es. 400 — o 0 se arrivano come entrate" data-i18n-ph="sh.basePh"></div>
         <div class="example num" id="pExample"></div>
         <p class="error" id="pError" hidden></p>
         <div class="row">
-          <button class="btn accent" id="pSave" type="button">Salva</button>
-          <button class="btn" id="pCancel" type="button">Annulla</button>
+          <button class="btn accent" id="pSave" type="button" data-i18n="sh.save">Salva</button>
+          <button class="btn" id="pCancel" type="button" data-i18n="sh.cancel">Annulla</button>
         </div>
         <div id="pDeleteZone"></div>
-        <p class="restore" id="pRestore" hidden>Hai cambiato telefono? <label class="link" for="fileImport">Carica il tuo backup</label></p>
+        <p class="restore" id="pRestore" hidden><span data-i18n="sh.restore">Hai cambiato telefono?</span> <label class="link" for="fileImport" data-i18n="sh.restoreLink">Carica il tuo backup</label></p>
       </div>
     </div>
 
     <!-- ================= NAV ================= -->
-    <nav class="nav" aria-label="Sezioni">
+    <nav class="nav" aria-label="Sezioni" data-i18n-aria="nav.sections">
       <button data-nav="today" aria-current="page">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-6 8 6v8a1 1 0 0 1-1 1h-4v-5h-6v5H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-        <span>Oggi</span>
+        <span data-i18n="nav.today">Oggi</span>
       </button>
       <button data-nav="moves">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="4.5" cy="6" r="1.2" fill="currentColor"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor"/><circle cx="4.5" cy="18" r="1.2" fill="currentColor"/></svg>
-        <span>Movimenti</span>
+        <span data-i18n="nav.moves">Movimenti</span>
       </button>
       <button data-nav="calendar">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4 10h16M9 3v4M15 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        <span>Calendario</span>
+        <span data-i18n="nav.calendar">Calendario</span>
       </button>
       <button data-nav="periods">
         <svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5 6v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V6M5 12v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6v-6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
-        <span>Periodi</span>
+        <span data-i18n="nav.periods">Periodi</span>
       </button>
     </nav>
 
@@ -235,6 +240,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
   </div>
 
+  <script src="i18n.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
