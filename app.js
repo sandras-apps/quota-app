@@ -40,7 +40,7 @@
       it: 'Ti dice quanto puoi spendere oggi; se un giorno risparmi, il giorno dopo hai di più. Gratis, senza account.',
       en: 'Tells you how much you can spend today; save a little and tomorrow you have more. Free, no account.',
       es: 'Te dice cuánto puedes gastar hoy; si un día ahorras, al día siguiente tienes más. Gratis, sin cuenta.' },
-    { id: 'easy-recipes', name: 'Easy Recipes', url: 'https://sandras-apps.github.io/easy-recipes/', live: false,
+    { id: 'easy-recipes', name: 'Easy Recipes', url: 'https://sandras-apps.github.io/easy-recipes/', live: true,
       it: 'Ricette semplici con le dosi dentro ogni passaggio e i timer già pronti. Gratis, senza account.',
       en: 'Simple recipes with the amounts inside every step and timers ready to go. Free, no account.',
       es: 'Recetas sencillas con las cantidades dentro de cada paso y los temporizadores listos. Gratis, sin cuenta.' },
