@@ -240,10 +240,16 @@
         <div class="card-head"><h2 data-i18n="bk.title">Backup</h2></div>
         <p class="hint" data-i18n="bk.desc">I dati restano solo su questo telefono. Per passare a un altro telefono: qui crei il backup e te lo mandi (WhatsApp, email, Drive), sull'altro telefono lo carichi.</p>
         <p class="backup-last" id="backupLast"></p>
-        <div class="row">
-          <button class="btn accent" id="btnShare" type="button" hidden data-i18n="bk.share">Invia backup</button>
-          <button class="btn" id="btnExport" type="button" data-i18n="bk.download">Scarica backup</button>
-          <label class="btn" for="fileImport" data-i18n="bk.load">Carica backup</label>
+        <button class="bk-btn accent" id="btnShare" type="button" hidden>
+          <b data-i18n="bk.share">Invia una copia dei tuoi dati</b><span data-i18n="bk.shareSub">Mandala a te stessa su WhatsApp, email o Drive</span>
+        </button>
+        <button class="bk-btn" id="btnExport" type="button">
+          <b data-i18n="bk.download">Salva una copia sul telefono</b><span data-i18n="bk.downloadSub">Finisce nella cartella Download</span>
+        </button>
+        <button type="button" class="link bk-import-link" id="importToggle" data-i18n="bk.importLink">Hai cambiato telefono? Importa i tuoi dati</button>
+        <div class="bk-import" id="importBox" hidden>
+          <p class="hint" data-i18n="bk.importDesc">Scegli il file di Quota che ti eri mandata o salvata (si chiama quota-backup-… .json). Sostituisce i dati che hai ora su questo telefono.</p>
+          <label class="btn" for="fileImport" data-i18n="bk.load">Scegli il file</label>
         </div>
         <p class="hint" id="backupMsg" hidden></p>
       </article>

@@ -1134,6 +1134,7 @@
       markBackup(); toast(t('bk.sent'));
     } catch (e) { if (e && e.name !== 'AbortError') toast(t('bk.shareFail')); }
   });
+  $('importToggle').addEventListener('click', () => { $('importBox').hidden = !$('importBox').hidden; });
   $('btnExport').addEventListener('click', () => {
     const blob = new Blob([backupText()], { type: 'application/json' });
     const a = document.createElement('a');

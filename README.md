@@ -35,8 +35,8 @@ Periodi e movimenti restano solo nel browser del telefono e non vengono mai invi
 - **iPhone:** apri il link in Safari → Condividi → **Aggiungi alla schermata Home**.
 
 ## Cambiare telefono
-1. Sul vecchio telefono: *Impostazioni → Backup → **Invia backup*** e mandati il file (WhatsApp, email, Drive).
-2. Sul nuovo telefono: apri l'app e tocca **"Hai cambiato telefono? Carica il tuo backup"**.
+1. Sul vecchio telefono: *Impostazioni → Copia dei dati → **Invia una copia dei tuoi dati*** e mandatela (WhatsApp, email, Drive).
+2. Sul nuovo telefono: apri l'app e tocca **"Hai cambiato telefono? Importa i tuoi dati"**.
 
 ## Struttura
 
@@ -55,7 +55,7 @@ Periodi e movimenti restano solo nel browser del telefono e non vengono mai invi
 Nessuna build: è HTML, CSS e JavaScript puro, pubblicato con GitHub Pages dal branch `main`.
 
 ## Aggiornare l'app
-Dopo ogni modifica, in `sw.js` aumenta il numero in `const VERSION = 'quota-v10';` (`quota-v11`, `quota-v12`…), così i telefoni scaricano la nuova versione.
+Dopo ogni modifica, in `sw.js` aumenta il numero in `const VERSION = 'quota-v11';` (`quota-v12`, `quota-v13`…), così i telefoni scaricano la nuova versione.
 
 ## Identità
 
