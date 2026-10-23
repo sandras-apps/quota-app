@@ -261,9 +261,24 @@
       </article>
 
       <article class="card">
+        <div class="card-head"><h2 data-i18n="share.title">Ti sta piacendo?</h2></div>
+        <p class="hint" data-i18n="share.desc">Condividila con chi potrebbe trovarla utile.</p>
+        <button class="btn accent" id="btnShareApp" type="button" data-i18n="share.btn">Condividi Quota</button>
+        <p class="hint" id="shareAppMsg" hidden></p>
+      </article>
+
+      <!-- Altre app di Sandra: la lista è OTHER_APPS in app.js; la card resta nascosta finché non ce n'è nessuna uscita -->
+      <article class="card" id="moreAppsCard" hidden>
+        <div class="card-head"><h2 data-i18n="more.title">Altre app di Sandra</h2></div>
+        <p class="hint" data-i18n="more.desc">Ti piace Quota? Ho fatto anche queste.</p>
+        <ul class="more-apps" id="moreAppsList"></ul>
+      </article>
+
+      <article class="card">
         <div class="card-head"><h2 data-i18n="priv.title">Privacy</h2></div>
         <p class="hint" data-i18n="priv.data"></p>
         <p class="hint" data-i18n="priv.count"></p>
+        <p class="hint" data-i18n="priv.share"></p>
         <p class="hint" data-i18n="priv.host"></p>
         <p class="hint priv-links"><a href="https://www.goatcounter.com/help/privacy" target="_blank" rel="noopener noreferrer" data-i18n="priv.gc">Informativa di GoatCounter</a> · <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer" data-i18n="priv.gh">Informativa di GitHub</a></p>
       </article>

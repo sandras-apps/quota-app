@@ -393,3 +393,9 @@ label.link { cursor: pointer; }
 }
 @media (max-width: 360px) { .dd { width: 32px; height: 32px; font-size: 13px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* Altre app di Sandra (Impostazioni) */
+.more-apps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.more-apps li { display: flex; flex-direction: column; gap: 2px; }
+.more-apps a { color: var(--accent-ink); font-weight: 600; font-size: 15px; }
+.more-apps span { font-size: 14px; color: var(--muted); }

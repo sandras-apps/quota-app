@@ -25,7 +25,54 @@
     $$('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
     $$('[data-i18n-ph]').forEach((el) => { el.placeholder = t(el.dataset.i18nPh); });
     $$('[data-i18n-aria]').forEach((el) => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
+    renderMoreApps();
   }
+  /* ---------------- condividi e altre app di Sandra ---------------- */
+  const APP_URL = 'https://sandras-apps.github.io/quota-app/';
+  // La stessa lista è in tutte le app di Sandra. Si vedono solo quelle con live: true:
+  // quando un'app esce per tutti, metti live: true. "Gratis, senza account" solo dove è vero.
+  const OTHER_APPS = [
+    { id: 'inward', name: 'Inward', url: 'https://sandras-apps.github.io/inward-app/', live: true,
+      it: 'Una domanda profonda al giorno, da scrivere sul tuo diario di carta. Gratis, senza account.',
+      en: 'One deep question a day, to answer in your own paper journal. Free, no account.',
+      es: 'Una pregunta profunda al día, para responder en tu diario de papel. Gratis, sin cuenta.' },
+    { id: 'quota', name: 'Quota', url: 'https://sandras-apps.github.io/quota-app/', live: false,
+      it: 'Ti dice quanto puoi spendere oggi; se un giorno risparmi, il giorno dopo hai di più. Gratis, senza account.',
+      en: 'Tells you how much you can spend today; save a little and tomorrow you have more. Free, no account.',
+      es: 'Te dice cuánto puedes gastar hoy; si un día ahorras, al día siguiente tienes más. Gratis, sin cuenta.' },
+    { id: 'easy-recipes', name: 'Easy Recipes', url: 'https://sandras-apps.github.io/easy-recipes/', live: false,
+      it: 'Ricette semplici con le dosi dentro ogni passaggio e i timer già pronti. Gratis, senza account.',
+      en: 'Simple recipes with the amounts inside every step and timers ready to go. Free, no account.',
+      es: 'Recetas sencillas con las cantidades dentro de cada paso y los temporizadores listos. Gratis, sin cuenta.' },
+    { id: 'goatstep', name: 'Goatstep', url: '', live: false },
+    { id: 'moontick', name: 'MoonTick', url: 'https://getmoontick.com/', live: false }
+  ];
+  function renderMoreApps() {
+    const list = $('moreAppsList'); if (!list) return;
+    const apps = OTHER_APPS.filter((a) => a.live && a.id !== 'quota');
+    list.textContent = '';
+    apps.forEach((a) => {
+      const li = document.createElement('li');
+      const link = document.createElement('a');
+      link.href = a.url; link.target = '_blank'; link.rel = 'noopener'; link.textContent = a.name;
+      const line = document.createElement('span');
+      line.textContent = a[lang] || a.en || '';
+      li.append(link, line); list.appendChild(li);
+    });
+    $('moreAppsCard').hidden = apps.length === 0;
+  }
+  // Menu di condivisione del telefono: l'app non invia niente, sceglie la persona.
+  // Dove non c'è (quasi tutti i computer) copiamo messaggio e link.
+  function shareApp() {
+    const msg = $('shareAppMsg'); msg.hidden = true;
+    const say = (s) => { msg.textContent = s; msg.hidden = false; };
+    if (navigator.share) { navigator.share({ title: 'Quota', text: t('share.msg'), url: APP_URL }).catch(() => {}); return; }
+    const all = t('share.msg') + ' ' + APP_URL;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(all).then(() => say(t('share.copied')), () => say(t('share.failed') + ' ' + APP_URL));
+    } else say(t('share.failed') + ' ' + APP_URL);
+  }
+  $('btnShareApp').addEventListener('click', shareApp);
   const money = (v) => eur.format(v);
   const pad = (n) => String(n).padStart(2, '0');
   const ymd = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
