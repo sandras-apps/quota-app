@@ -1,12 +1,16 @@
 /* Service worker: fa funzionare Quota anche offline.
-   Strategia: prima la rete (così ogni aggiornamento arriva subito), la copia salvata solo se sei offline.
+   Strategia: prima la rete (così ogni aggiornamento arriva subito). Se sei offline, o la rete
+   non risponde entro 3 secondi (es. una tacca di segnale in un negozio), usa la copia salvata.
+   Le richieste verso altri siti (es. il conteggio anonimo di GoatCounter) non vengono toccate né salvate.
    Quando modifichi i file dell'app, aumenta il numero di VERSION. */
-const VERSION = 'quota-v6';
+const VERSION = 'quota-v7';
 const SHELL = [
   './', 'index.html', 'style.css', 'i18n.js', 'app.js', 'manifest.webmanifest',
+  'fonts/plus-jakarta-sans.woff2', 'fonts/inter.woff2',
   'icons/symbol.svg', 'icons/symbol-light.svg', 'icons/favicon.svg', 'icons/favicon.png',
   'icons/apple-touch-icon.png', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png'
 ];
+const SLOW_MS = 3000;
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
@@ -18,18 +22,26 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  const isFont = url.hostname.endsWith('fonts.googleapis.com') || url.hostname.endsWith('fonts.gstatic.com');
-  if (url.origin !== location.origin && !isFont) return;
-  if (isFont) {
-    // i font non cambiano: prima la copia salvata
-    e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((r) => { const c = r.clone(); caches.open(VERSION).then((x) => x.put(req, c)); return r; })));
+  if (url.origin !== location.origin) return; // altri siti: non toccati
+  const key = req.mode === 'navigate' ? 'index.html' : req;
+
+  // i font non cambiano: prima la copia salvata
+  if (url.pathname.indexOf('/fonts/') !== -1) {
+    e.respondWith(caches.match(req).then((hit) => hit || fetch(req)));
     return;
   }
-  // file dell'app: prima la rete, poi la copia salvata se sei offline
-  e.respondWith(
-    fetch(new Request(req, { cache: 'no-cache' })).then((r) => {
-      if (r.ok) { const c = r.clone(); caches.open(VERSION).then((x) => x.put(req.mode === 'navigate' ? 'index.html' : req, c)); }
-      return r;
-    }).catch(() => caches.match(req.mode === 'navigate' ? 'index.html' : req).then((hit) => hit || caches.match(req)))
-  );
+
+  // file dell'app: prima la rete; la copia salvata se sei offline o la rete è troppo lenta
+  const fromNet = fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then((r) => {
+    if (r.ok) { const c = r.clone(); e.waitUntil(caches.open(VERSION).then((x) => x.put(key, c))); }
+    return r;
+  });
+  const fromCache = () => caches.match(key).then((hit) => hit || caches.match(req));
+  e.respondWith(new Promise((resolve) => {
+    let done = false;
+    const finish = (r) => { if (!done && r) { done = true; resolve(r); } };
+    const timer = setTimeout(() => { fromCache().then(finish); }, SLOW_MS);
+    fromNet.then((r) => { clearTimeout(timer); finish(r); })
+      .catch(() => { clearTimeout(timer); fromCache().then((hit) => { if (hit) finish(hit); else finish(Response.error()); }); });
+  }));
 });

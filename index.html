@@ -15,9 +15,8 @@
   <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="icons/favicon.png" type="image/png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap">
+  <link rel="preload" href="fonts/plus-jakarta-sans.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -191,6 +190,14 @@
         <button class="btn accent" id="btnInstall" type="button" hidden data-i18n="inst.btn">Installa Quota</button>
       </article>
 
+      <article class="card">
+        <div class="card-head"><h2 data-i18n="priv.title">Privacy</h2></div>
+        <p class="hint" data-i18n="priv.data"></p>
+        <p class="hint" data-i18n="priv.count"></p>
+        <p class="hint" data-i18n="priv.host"></p>
+        <p class="hint priv-links"><a href="https://www.goatcounter.com/help/privacy" target="_blank" rel="noopener noreferrer" data-i18n="priv.gc">Informativa di GoatCounter</a> · <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer" data-i18n="priv.gh">Informativa di GitHub</a></p>
+      </article>
+
       <p class="tagline" data-i18n="tagline">Ogni giorno, il tuo equilibrio.</p>
     </section>
 
@@ -242,5 +249,7 @@
 
   <script src="i18n.js"></script>
   <script src="app.js"></script>
+  <!-- Conteggio anonimo delle visite (GoatCounter): solo le visite, niente cookie. Se non si carica, l'app funziona lo stesso. -->
+  <script data-goatcounter="https://quota-app.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>

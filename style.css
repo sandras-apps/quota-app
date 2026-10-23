@@ -1,6 +1,17 @@
 /* Quota — direzione "Essenza"
    Chiaro: Grigio nuvola #F2F3F1 · Grafite #242624 · Arancio vivo #F47735 · Menta #35B982 · Corallo tenue #E77979
    Scuro:  Notte #15171C · Gesso #F1F0EC · stessi accenti */
+
+/* Font inclusi nell'app (niente richieste a Google Fonts). Licenza: fonts/OFL.txt */
+@font-face {
+  font-family: "Plus Jakarta Sans"; font-style: normal; font-weight: 200 800; font-display: swap;
+  src: url("fonts/plus-jakarta-sans.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("fonts/inter.woff2") format("woff2");
+}
+
 :root {
   --bg: #F2F3F1;
   --surface: #FFFFFF;
@@ -114,6 +125,8 @@ button { cursor: pointer; }
 .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .card h2 { font-family: var(--display); font-size: 17px; font-weight: 700; margin: 0; }
 .hint { margin: 0; font-size: 14px; color: var(--muted); }
+.card .hint + .hint { margin-top: 8px; }
+.priv-links a { color: var(--accent-ink); font-weight: 600; }
 .link { border: 0; background: none; color: var(--accent-ink); font-weight: 600; font-size: 14px; padding: 2px 0; }
 
 /* add */

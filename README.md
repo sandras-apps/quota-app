@@ -21,7 +21,10 @@ Quota è un'app di budget giornaliero. Scegli un periodo (per esempio da uno sti
 - Calendario con tre stati riconoscibili anche dalla forma: cerchio pieno (in quota), cerchio vuoto (zero spese), cerchio con punto (sforato).
 - In **italiano, inglese e spagnolo** (si sceglie in *Periodi → Lingua*).
 - Tema chiaro e scuro automatici, funziona **offline**, si installa sulla schermata Home.
-- Gratuita, **senza account**: i dati restano sul telefono.
+- Gratuita, **senza account** e senza cookie: i dati restano sul telefono.
+
+## Privacy
+Periodi e movimenti restano solo nel browser del telefono e non vengono mai inviati da nessuna parte. L'unica cosa che esce è un conteggio anonimo delle visite con [GoatCounter](https://www.goatcounter.com/help/privacy) (solo le visite, niente cookie). I font sono inclusi nell'app, quindi niente richieste a Google Fonts. I dettagli sono nell'app, in *Periodi → Privacy*.
 
 ## Installarla
 - **Android:** apri il link in Chrome → ⋮ → **Installa app**.
@@ -41,13 +44,14 @@ Quota è un'app di budget giornaliero. Scegli un periodo (per esempio da uno sti
 | `app.js` | Logica: periodi, movimenti, quota, riporto, backup |
 | `manifest.webmanifest` | Nome, colori e icone per l'installazione |
 | `sw.js` | Service worker per l'uso offline |
+| `fonts/` | Font inclusi nell'app (licenza in `fonts/OFL.txt`) |
 | `icons/` | Logo e icone |
 | `docs/` | Schermate per questo README |
 
 Nessuna build: è HTML, CSS e JavaScript puro, pubblicato con GitHub Pages dal branch `main`.
 
 ## Aggiornare l'app
-Dopo ogni modifica, in `sw.js` aumenta il numero in `const VERSION = 'quota-v6';` (`quota-v7`, `quota-v8`…), così i telefoni scaricano la nuova versione.
+Dopo ogni modifica, in `sw.js` aumenta il numero in `const VERSION = 'quota-v7';` (`quota-v8`, `quota-v9`…), così i telefoni scaricano la nuova versione.
 
 ## Identità
 
@@ -59,5 +63,5 @@ Dopo ogni modifica, in `sw.js` aumenta il numero in `const VERSION = 'quota-v6';
 | In quota | Menta `#35B982` | `#35B982` |
 | In rosso | Corallo tenue `#E77979` | `#E77979` |
 
-Font: **Plus Jakarta Sans** (titoli e cifre) e **Inter** (testi).
+Font: **Plus Jakarta Sans** (titoli e cifre) e **Inter** (testi), entrambi inclusi nell'app (SIL OFL 1.1).
 Logo: un sole che sorge sull'orizzonte, la quota come punto di equilibrio.

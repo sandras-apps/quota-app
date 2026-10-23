@@ -46,8 +46,10 @@
   };
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const parseAmt = (s) => {
-    // accetta 12,50 / 12.50 / 1.200,50 / 1,200.50
-    let x = String(s).replace(/[€\s]/g, '');
+    // accetta 12,50 / 12.50 / 1.200,50 / 1,200.50 / 1.200 / 1,200 (gli euro non hanno 3 decimali,
+    // quindi tre cifre dopo l'unico separatore sono migliaia: "1.200" = 1200, non 1,20)
+    let x = String(s).replace(/[€\s ]/g, '');
+    if (/^[1-9]\d{0,2}([.,])\d{3}(\1\d{3})*$/.test(x)) x = x.replace(/[.,]/g, '');
     const lc = x.lastIndexOf(','), ld = x.lastIndexOf('.');
     if (lc > ld) x = x.replace(/\./g, '').replace(',', '.');
     else if (ld > lc && lc !== -1) x = x.replace(/,/g, '');
@@ -489,7 +491,11 @@
 
   $('week').addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-day]'); if (!b) return;
-    selDate = b.dataset.day; renderCalendarView(); go('calendar');
+    const p = cur(); if (!p) return;
+    // un giorno fuori dal periodo non è nel calendario: apri il giorno più vicino del periodo
+    const d = b.dataset.day;
+    selDate = inPeriod(p, d) ? d : (d < p.start ? p.start : p.end);
+    renderCalendarView(); go('calendar');
   });
   $('cal').addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-day]'); if (!b) return;
@@ -637,26 +643,66 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     markBackup();
   });
+  // Controlla che il file sia davvero un backup di Quota prima di toccare i dati
+  const isDay = (x) => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x) && !isNaN(toD(x));
+  function readBackup(j) {
+    const d = j && j.data;
+    if (!d || !Array.isArray(d.periods) || !d.entries || typeof d.entries !== 'object' || Array.isArray(d.entries)) return null;
+    const periods = d.periods.filter((p) => p && typeof p.id === 'string' && isDay(p.start) && isDay(p.end) && p.end >= p.start)
+      .map((p) => ({ id: p.id, name: typeof p.name === 'string' ? p.name : '', start: p.start, end: p.end, base: typeof p.base === 'number' && isFinite(p.base) && p.base > 0 ? p.base : 0 }));
+    if (periods.length !== d.periods.length) return null;
+    const entries = {};
+    for (const p of periods) {
+      const raw = d.entries[p.id] || [];
+      if (!Array.isArray(raw)) return null;
+      const ok = raw.filter((e) => e && typeof e.id === 'string' && isDay(e.date) && typeof e.amount === 'number' && isFinite(e.amount) && e.amount > 0);
+      if (ok.length !== raw.length) return null;
+      entries[p.id] = ok.map((e) => {
+        const x = { id: e.id, date: e.date, amount: e.amount, type: e.type === 'in' ? 'in' : 'out', cat: typeof e.cat === 'string' ? e.cat : '', note: typeof e.note === 'string' ? e.note : '' };
+        if (x.type === 'in' && typeof e.spread === 'boolean') x.spread = e.spread;
+        return x;
+      });
+    }
+    const st = d.settings && typeof d.settings === 'object' ? d.settings : {};
+    return {
+      periods, entries,
+      current: periods.some((p) => p.id === d.current) ? d.current : null,
+      settings: { overspend: st.overspend === 'ricalcola' ? 'ricalcola' : 'riporto', lang: state.settings.lang, lastBackup: isDay(st.lastBackup) ? st.lastBackup : undefined }
+    };
+  }
+  function applyBackup(next) {
+    state = next;
+    if (!cur()) state.current = pickCurrent();
+    save();
+    selDate = cur() ? clampSel(cur()) : today;
+    renderAll();
+    const msg = $('backupMsg');
+    msg.textContent = tn('bk.loaded', state.periods.length) + '.'; msg.hidden = false;
+    if (!$('sheet').hidden && cur()) { closeEditor(); go('today'); }
+    toast(tn('bk.loaded', state.periods.length));
+  }
   $('fileImport').addEventListener('change', async (ev) => {
     const f = ev.target.files[0]; if (!f) return;
-    const msg = $('backupMsg');
-    try {
-      const j = JSON.parse(await f.text());
-      const d = j && j.data;
-      if (!d || !Array.isArray(d.periods) || typeof d.entries !== 'object') throw new Error('formato');
-      state = { periods: d.periods, current: d.current, entries: d.entries, settings: Object.assign({ overspend: 'riporto' }, d.settings || state.settings, { lang: state.settings.lang }) };
-      if (!cur()) state.current = pickCurrent();
-      save();
-      selDate = cur() ? clampSel(cur()) : today;
-      renderAll();
-      msg.textContent = tn('bk.loaded', state.periods.length) + '.';
-      if (!$('sheet').hidden && cur()) { closeEditor(); go('today'); }
-      toast(tn('bk.loaded', state.periods.length));
-    } catch (e) {
-      msg.textContent = t('bk.bad');
-    }
-    msg.hidden = false;
     ev.target.value = '';
+    const msg = $('backupMsg');
+    let next = null;
+    try { next = readBackup(JSON.parse(await f.text())); } catch (e) { next = null; }
+    if (!next) {
+      msg.textContent = t('bk.bad'); msg.hidden = false;
+      if (!$('sheet').hidden) toast(t('bk.bad'));
+      return;
+    }
+    // se ci sono già dati, chiedi prima di sostituirli
+    if (state.periods.length) {
+      go('periods');
+      msg.innerHTML = '<span class="confirm"><span>' + esc(t('bk.replace')) + '</span><button type="button" class="btn danger" data-yes>' + esc(t('bk.replaceYes')) + '</button><button type="button" class="btn" data-no>' + esc(t('item.no')) + '</button></span>';
+      msg.hidden = false;
+      msg.querySelector('[data-yes]').addEventListener('click', () => applyBackup(next));
+      msg.querySelector('[data-no]').addEventListener('click', () => { msg.hidden = true; msg.textContent = ''; });
+      msg.scrollIntoView({ block: 'center' });
+      return;
+    }
+    applyBackup(next);
   });
 
   /* ---------------- installazione e offline ---------------- */
@@ -669,9 +715,15 @@
   if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) $('installCard').hidden = true;
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     // quando arriva una versione nuova dell'app, ricarica una volta da sola
-    let reloaded = false;
+    // ...ma non mentre stai scrivendo: in quel caso aspetta che chiudi o lasci l'app
+    let reloaded = false, pending = false;
+    const busy = () => !$('sheet').hidden || $('inAmt').value !== '' || $('inNote').value !== '' ||
+      (document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) ||
+      !!document.querySelector('.confirm');
+    const reload = () => { if (!reloaded) { reloaded = true; location.reload(); } };
     if (navigator.serviceWorker.controller) {
-      navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloaded) { reloaded = true; location.reload(); } });
+      navigator.serviceWorker.addEventListener('controllerchange', () => { if (busy()) pending = true; else reload(); });
+      document.addEventListener('visibilitychange', () => { if (pending && document.hidden) reload(); });
     }
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => {
       document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
