@@ -217,6 +217,9 @@ input:focus { border-color: var(--accent); outline: none; }
 .item .del { border: 0; background: none; color: var(--muted); font-size: 22px; line-height: 1; padding: 4px 2px; }
 .confirm { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; flex: 1; }
 .confirm .btn { padding: 6px 12px; }
+.confirm.warn { background: var(--neg-soft); border-radius: 14px; padding: 12px; margin: 4px 0; }
+.warn-txt { flex: 1 1 100%; display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+.warn-txt b { font-family: var(--display); font-size: 15px; color: var(--neg-ink); }
 .empty { color: var(--muted); font-size: 14px; padding: 4px 0; }
 
 /* moves */

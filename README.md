@@ -55,7 +55,7 @@ Periodi e movimenti restano solo nel browser del telefono e non vengono mai invi
 Nessuna build: è HTML, CSS e JavaScript puro, pubblicato con GitHub Pages dal branch `main`.
 
 ## Aggiornare l'app
-Dopo ogni modifica, in `sw.js` aumenta il numero in `const VERSION = 'quota-v9';` (`quota-v10`, `quota-v11`…), così i telefoni scaricano la nuova versione.
+Dopo ogni modifica, in `sw.js` aumenta il numero in `const VERSION = 'quota-v10';` (`quota-v11`, `quota-v12`…), così i telefoni scaricano la nuova versione.
 
 ## Identità
 

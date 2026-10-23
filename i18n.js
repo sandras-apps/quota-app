@@ -220,7 +220,16 @@ window.QUOTA_I18N = {
     "em.backSure": "Vuoi davvero toglierli dai risparmi?",
     "em.backSureSub": "Togli {amt}: tornano divisi su {n}, circa {day} in più al giorno. Nei risparmi restano {left}.",
     "em.backYes": "Sì, toglili",
-    "em.backDone": "Tolti dai risparmi"
+    "em.backDone": "Tolti dai risparmi",
+    "pot.title": "Questi risparmi erano già stati usati",
+    "pot.warn": "Se li togli, {what}.",
+    "pot.uses": "gli imprevisti pagati con loro ({amt}) passano nelle uscite del giorno in cui li hai fatti e contano nella quota",
+    "pot.backs": "i soldi già tolti dai risparmi ({amt}) escono di nuovo dalla quota",
+    "pot.and": "; ",
+    "pot.anyway": "Elimina comunque",
+    "pot.saveAnyway": "Salva comunque",
+    "pot.done": "Fatto: gli imprevisti ora sono uscite normali",
+    "pot.was": "era un imprevisto"
   },
   en: {
     'period': 'Period',
@@ -436,7 +445,16 @@ window.QUOTA_I18N = {
     "em.backSure": "Do you really want to take it out of savings?",
     "em.backSureSub": "You take out {amt}: it's spread over {n}, about {day} more a day. {left} stays in savings.",
     "em.backYes": "Yes, take it out",
-    "em.backDone": "Taken out of savings"
+    "em.backDone": "Taken out of savings",
+    "pot.title": "These savings were already used",
+    "pot.warn": "If you remove them, {what}.",
+    "pot.uses": "the emergencies paid with them ({amt}) move to the spending of the day they happened and count in your quota",
+    "pot.backs": "the money already taken out of savings ({amt}) comes out of your quota again",
+    "pot.and": "; ",
+    "pot.anyway": "Delete anyway",
+    "pot.saveAnyway": "Save anyway",
+    "pot.done": "Done: the emergencies are now normal spending",
+    "pot.was": "was an emergency"
   },
   es: {
     'period': 'Periodo',
@@ -652,6 +670,15 @@ window.QUOTA_I18N = {
     "em.backSure": "¿De verdad quieres quitarlo de los ahorros?",
     "em.backSureSub": "Quitas {amt}: se reparte en {n}, unos {day} más al día. En los ahorros quedan {left}.",
     "em.backYes": "Sí, quitarlo",
-    "em.backDone": "Quitado de los ahorros"
+    "em.backDone": "Quitado de los ahorros",
+    "pot.title": "Estos ahorros ya se habían usado",
+    "pot.warn": "Si los quitas, {what}.",
+    "pot.uses": "los imprevistos pagados con ellos ({amt}) pasan a los gastos del día en que los hiciste y cuentan en la cuota",
+    "pot.backs": "el dinero ya quitado de los ahorros ({amt}) vuelve a salir de la cuota",
+    "pot.and": "; ",
+    "pot.anyway": "Eliminar igualmente",
+    "pot.saveAnyway": "Guardar igualmente",
+    "pot.done": "Hecho: los imprevistos ahora son gastos normales",
+    "pot.was": "era un imprevisto"
   }
 };

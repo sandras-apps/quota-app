@@ -233,6 +233,36 @@
       b + (isDeposit(e) ? e.amount : (e.fromSavings || e.sav === 'back') ? -e.amount : 0), 0), 0);
     return Math.round((inn + moved) * 100) / 100;
   }
+  /* Se togli dei risparmi che erano già stati usati, quello che hai usato resta senza copertura.
+     Dal più recente: gli imprevisti diventano uscite normali del giorno in cui li hai fatti,
+     i soldi "tolti dai risparmi" escono di nuovo dalla quota. */
+  const r2 = (x) => Math.round(x * 100) / 100;
+  function coverPlan(deficit, skipPid) {
+    const items = [];
+    Object.keys(state.entries).forEach((pid) => { if (pid !== skipPid) (state.entries[pid] || []).forEach((e) => { if (e.fromSavings || e.sav === 'back') items.push({ pid, e }); }); });
+    items.sort((a, b) => b.e.date.localeCompare(a.e.date));
+    let left = deficit; const plan = [];
+    for (const it of items) { if (left <= 0.004) break; const amt = r2(Math.min(left, it.e.amount)); plan.push({ pid: it.pid, e: it.e, amt }); left = r2(left - amt); }
+    return plan;
+  }
+  function applyPlan(plan) {
+    plan.forEach(({ pid, e, amt }) => {
+      const l = state.entries[pid]; if (!l) return;
+      const full = amt >= e.amount - 0.004;
+      if (e.fromSavings) {
+        if (full) { delete e.fromSavings; e.cat = 'altro'; e.wasEmergency = true; }
+        else { e.amount = r2(e.amount - amt); l.push({ id: uid(), date: e.date, amount: amt, type: 'out', cat: 'altro', note: e.note, wasEmergency: true }); }
+      } else if (full) state.entries[pid] = l.filter((x) => x !== e);
+      else e.amount = r2(e.amount - amt);
+    });
+  }
+  function planText(plan) {
+    const u = plan.reduce((a, x) => a + (x.e.fromSavings ? x.amt : 0), 0), b = plan.reduce((a, x) => a + (x.e.fromSavings ? 0 : x.amt), 0);
+    const parts = [];
+    if (u > 0) parts.push(t('pot.uses', { amt: money(u) }));
+    if (b > 0) parts.push(t('pot.backs', { amt: money(b) }));
+    return t('pot.warn', { what: parts.join(t('pot.and')) });
+  }
 
   function sources(p) {
     const s = [{ date: p.start, amount: (p.base || 0) - reserved(p) }];
@@ -479,7 +509,7 @@
     }
     return '<li class="item' + (e.type === 'in' ? ' in' : '') + '" data-id="' + e.id + '">' +
       '<span class="ico">' + svg(c.icon) + '</span>' +
-      '<span class="txt"><b>' + esc(e.note || catName(c)) + '</b><span>' + esc(catName(c) + (e.type === 'in' ? ' · ' + (isOneOff(e) ? t('item.once') : t('item.spread')) : '')) + '</span></span>' +
+      '<span class="txt"><b>' + esc(e.note || catName(c)) + '</b><span>' + esc(catName(c) + (e.wasEmergency ? ' · ' + t('pot.was') : '') + (e.type === 'in' ? ' · ' + (isOneOff(e) ? t('item.once') : t('item.spread')) : '')) + '</span></span>' +
       '<span class="amt-v num">' + (e.type === 'in' ? '+' : '−') + money(e.amount) + '</span>' +
       '<button type="button" class="del" aria-label="' + t('item.delete') + '">×</button></li>';
   }
@@ -934,10 +964,19 @@
     const del = ev.target.closest('.del'); if (!del) return;
     const li = del.closest('.item'), id = li.dataset.id;
     const e = list().find((x) => x.id === id); if (!e) return;
-    li.innerHTML = '<div class="confirm"><span>' + t('item.confirm', { amt: money(e.amount) }) + '</span><button type="button" class="btn danger" data-yes>' + t('item.yes') + '</button><button type="button" class="btn" data-no>' + t('item.no') + '</button></div>';
+    // eliminare dei risparmi già usati: avvisa prima cosa succede a "togli" e imprevisti
+    const deficit = isDeposit(e) ? r2(e.amount - savingsPot()) : 0;
+    const plan = deficit > 0.004 ? coverPlan(deficit) : [];
+    if (plan.length) {
+      li.innerHTML = '<div class="confirm warn"><span class="warn-txt"><b>' + esc(t('pot.title')) + '</b>' + esc(planText(plan)) + '</span>' +
+        '<button type="button" class="btn danger" data-yes>' + esc(t('pot.anyway')) + '</button><button type="button" class="btn" data-no>' + esc(t('item.no')) + '</button></div>';
+    } else {
+      li.innerHTML = '<div class="confirm"><span>' + t('item.confirm', { amt: money(e.amount) }) + '</span><button type="button" class="btn danger" data-yes>' + t('item.yes') + '</button><button type="button" class="btn" data-no>' + t('item.no') + '</button></div>';
+    }
     li.querySelector('[data-yes]').addEventListener('click', () => {
       state.entries[state.current] = list().filter((x) => x.id !== id);
-      save(); toast(t('item.deleted')); renderAll();
+      if (plan.length) applyPlan(coverPlan(deficit));
+      save(); toast(plan.length ? t('pot.done') : t('item.deleted')); renderAll();
     });
     li.querySelector('[data-no]').addEventListener('click', renderAll);
   }
@@ -992,13 +1031,19 @@
     $('pBase').value = p && p.base ? String(p.base).replace('.', ',') : '';
     $('pSaveAmt').value = p && p.save ? String(p.save).replace('.', ',') : '';
     $('pError').hidden = true;
+    saveWarned = false; $('pSave').textContent = t('sh.save');
     $('pCancel').hidden = !state.periods.length;
     $('pRestore').hidden = state.periods.length > 0;
     const z = $('pDeleteZone');
     z.innerHTML = p ? '<button type="button" class="btn" id="pDel">' + t('sh.delete') + '</button>' : '';
     if (p) $('pDel').addEventListener('click', () => {
-      z.innerHTML = '<div class="confirm"><span>' + t('sh.deleteConfirm') + '</span><button type="button" class="btn danger" id="pDelYes">' + t('sh.deleteYes') + '</button></div>';
+      // i risparmi di questo periodo spariscono con lui: se erano già stati usati altrove, avvisa
+      const own = (state.entries[p.id] || []).reduce((a, e) => a + (isDeposit(e) ? e.amount : (e.fromSavings || e.sav === 'back') ? -e.amount : 0), 0);
+      const deficit = r2((p.start <= today ? (p.save || 0) : 0) + own - savingsPot());
+      const plan = deficit > 0.004 ? coverPlan(deficit, p.id) : [];
+      z.innerHTML = '<div class="confirm' + (plan.length ? ' warn' : '') + '"><span' + (plan.length ? ' class="warn-txt"' : '') + '>' + esc(t('sh.deleteConfirm')) + (plan.length ? ' ' + esc(planText(plan)) : '') + '</span><button type="button" class="btn danger" id="pDelYes">' + t('sh.deleteYes') + '</button></div>';
       $('pDelYes').addEventListener('click', () => {
+        if (plan.length) applyPlan(coverPlan(deficit, p.id));
         state.periods = state.periods.filter((x) => x.id !== p.id);
         delete state.entries[p.id];
         delete state.paid[p.id];
@@ -1025,7 +1070,11 @@
       ? (free > 0 ? t('sh.example', { days, q: money(q), q2: money(q * 2) }) : t('sh.exampleNone'))
       : t('sh.exampleNoBase', { days }));
   }
-  ['pStart', 'pEnd', 'pBase', 'pSaveAmt'].forEach((id) => $(id).addEventListener('input', updateExample));
+  let saveWarned = false;
+  ['pStart', 'pEnd', 'pBase', 'pSaveAmt'].forEach((id) => $(id).addEventListener('input', () => {
+    updateExample();
+    if (saveWarned) { saveWarned = false; $('pError').hidden = true; $('pSave').textContent = t('sh.save'); }
+  }));
   $('pCancel').addEventListener('click', closeEditor);
   $('sheet').addEventListener('click', (ev) => { if (ev.target === $('sheet') && state.periods.length) closeEditor(); });
   $('pSave').addEventListener('click', () => {
@@ -1033,6 +1082,21 @@
     if (!s || !e || e < s) { $('pError').textContent = t('sh.badDatesErr'); $('pError').hidden = false; return; }
     const sv = parseAmt($('pSaveAmt').value);
     const data = { name: $('pName').value.trim(), start: s, end: e, base: b > 0 ? b : 0, save: sv > 0 ? sv : 0 };
+    // meno risparmi di quelli già usati: avvisa una volta, al secondo "Salva" applica
+    let plan = [], deficit = 0;
+    if (editingId) {
+      const old = state.periods.find((x) => x.id === editingId);
+      deficit = r2((old.start <= today ? (old.save || 0) : 0) - (s <= today ? data.save : 0) - savingsPot());
+      if (deficit > 0.004) plan = coverPlan(deficit);
+    }
+    if (plan.length && !saveWarned) {
+      saveWarned = true;
+      $('pError').innerHTML = '<b>' + esc(t('pot.title')) + '</b><br>' + esc(planText(plan));
+      $('pError').hidden = false;
+      $('pSave').textContent = t('pot.saveAnyway');
+      return;
+    }
+    if (plan.length) applyPlan(plan);
     if (editingId) { Object.assign(state.periods.find((p) => p.id === editingId), data); state.current = editingId; }
     else { const id = uid(); state.periods.push(Object.assign({ id }, data)); state.current = id; state.entries[id] = []; }
     save(); closeEditor();
@@ -1099,6 +1163,7 @@
         if (x.type === 'in' && typeof e.spread === 'boolean') x.spread = e.spread;
         if (x.type === 'out' && e.fromSavings === true) x.fromSavings = true;
         else if ((e.sav === 'add' && x.type === 'out') || (e.sav === 'back' && x.type === 'in')) x.sav = e.sav;
+        if (x.type === 'out' && e.wasEmergency === true && !x.fromSavings) x.wasEmergency = true;
         return x;
       });
     }
