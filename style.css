@@ -293,13 +293,85 @@ label.link { cursor: pointer; }
   background: var(--surface); border-top: 1px solid var(--line);
   padding: 6px max(8px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
 }
-.nav button { flex: 1; max-width: 130px; border: 0; background: none; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; font-size: 12px; font-weight: 600; }
+.nav button { flex: 1; min-width: 0; max-width: 120px; border: 0; background: none; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; font-size: 12px; font-weight: 600; }
 .nav svg { width: 24px; height: 24px; }
+.nav span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+@media (max-width: 370px) { .nav button { font-size: 11px; } }
 .nav button[aria-current="page"] { color: var(--accent); }
 
 .toast {
   position: fixed; left: 50%; transform: translateX(-50%); z-index: 40; bottom: calc(var(--nav-h) + 16px + env(safe-area-inset-bottom));
   background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; font-weight: 600; max-width: calc(100% - 32px);
+}
+
+/* categorie: "+" accanto ad Altro e campo per crearne una */
+.cat-plus { padding: 5px 9px; color: var(--accent-ink); border-style: dashed; }
+.cat-plus svg { width: 16px; height: 16px; }
+.cat-new { display: inline-flex; align-items: center; gap: 6px; flex: 1 1 100%; }
+.cat-new input { padding: 8px 12px; border-radius: 999px; font-size: 14px; }
+.cat-new .btn { padding: 8px 14px; border-radius: 999px; font-size: 14px; }
+.cat-x { border: 0; background: none; color: var(--muted); font-size: 22px; line-height: 1; padding: 2px 4px; }
+.my-cats { display: flex; gap: 6px; flex-wrap: wrap; }
+.my-cat { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 4px 4px 10px; font-size: 14px; background: var(--sunk); }
+.my-cat svg { width: 16px; height: 16px; color: var(--muted); }
+.my-cat button { border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; padding: 2px 6px; }
+.add-row .btn { flex: 0 0 auto; }
+
+/* banner delle scadenze */
+.dues { display: flex; flex-direction: column; gap: 8px; }
+.due {
+  display: flex; align-items: flex-start; gap: 12px; position: relative;
+  background: var(--surface); border-radius: 18px; padding: 14px 40px 14px 14px;
+  box-shadow: var(--shadow), inset 0 0 0 1.5px var(--accent-soft);
+}
+.due-ico { flex: 0 0 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-ink); }
+.due-ico svg { width: 20px; height: 20px; }
+.due-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.due-when { font-size: 13px; font-weight: 600; color: var(--accent-ink); }
+.due-txt b { font-family: var(--display); font-weight: 700; font-size: 16px; overflow-wrap: anywhere; }
+.due-sub { font-size: 14px; color: var(--muted); }
+.due-act, .due-edit { display: flex; align-items: center; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+.due-act .btn, .due-edit .btn { padding: 7px 14px; }
+.due-edit input { flex: 1; min-width: 0; max-width: 140px; padding: 8px 10px; font-family: var(--display); font-weight: 700; }
+.due-x { position: absolute; top: 6px; right: 6px; border: 0; background: none; color: var(--muted); font-size: 22px; line-height: 1; padding: 6px 8px; }
+
+/* da parte */
+.set-sum { gap: 4px; }
+.set-label { font-size: 15px; font-weight: 500; color: var(--muted); }
+.set-amt { font-family: var(--display); font-weight: 800; font-size: 40px; letter-spacing: -.03em; line-height: 1.1; }
+.set-split { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.kv { display: flex; justify-content: space-between; gap: 10px; font-size: 15px; }
+.kv span { color: var(--muted); }
+.kv b { font-family: var(--display); font-weight: 700; }
+.btn-sav { color: #4C5FA8; border-color: #D9DEF2; }
+.btn-sav:disabled { opacity: .45; cursor: default; }
+.btn-sav-solid { background: #5B6FB8; color: #fff; border-color: transparent; }
+.sav-count { margin: 4px 0 0; font-size: 13px; font-weight: 600; color: var(--muted); }
+.fx-st { display: inline-flex; align-items: center; gap: 4px; margin-top: 3px; font-size: 13px; font-weight: 600; color: var(--accent-ink); }
+.item .txt .fx-st { color: var(--accent-ink); font-size: 13px; }
+.item .txt .fx-st.ok { color: var(--pos-ink); }
+.item .txt .fx-st.late { color: var(--neg-ink); }
+.item .txt .fx-st.off { color: var(--muted); font-weight: 500; }
+.fx-st svg { width: 14px; height: 14px; }
+.item.fx { cursor: pointer; }
+.flabel { font-size: 13px; font-weight: 600; }
+.seg-4 { grid-template-columns: 1fr 1fr; }
+.em-sure { display: flex; flex-direction: column; gap: 4px; background: var(--surface); border-radius: 16px; padding: 14px; box-shadow: inset 0 0 0 1.5px #D9DEF2; }
+.em-sure b { font-family: var(--display); font-size: 17px; }
+.em-sure span { font-size: 14px; color: var(--muted); }
+
+/* imprevisti presi dai risparmi: colore a parte, si capisce che non vengono dalla quota */
+.item.sav .ico { background: #E6EAF8; color: #4C5FA8; }
+.item.sav .amt-v { color: #4C5FA8; }
+.item .txt .sav-tag { color: #4C5FA8; font-weight: 600; }
+.ct.sav .ico { background: #E6EAF8; color: #4C5FA8; }
+.ct.sav .bar span { background: #7F8FCC; }
+@media (prefers-color-scheme: dark) {
+  .btn-sav { color: #A9B6EC; border-color: #333A55; }
+  .btn-sav-solid { background: #7F8FCC; color: #15171C; }
+  .em-sure { box-shadow: inset 0 0 0 1.5px #333A55; }
+  .item.sav .ico, .ct.sav .ico { background: #262C45; color: #A9B6EC; }
+  .item.sav .amt-v, .item .txt .sav-tag { color: #A9B6EC; }
 }
 
 @media (min-width: 640px) {

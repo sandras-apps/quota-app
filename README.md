@@ -18,6 +18,9 @@ Quota è un'app di budget giornaliero. Scegli un periodo (per esempio da uno sti
   - **Recupera**: la quota resta uguale, vai in negativo (es. −37,43 €) e l'app ti dice quanti giorni senza spese servono per tornare in pari.
   - **Ricalcola**: quello che resta viene ridiviso sui giorni che mancano, così arrivi sempre a fine periodo.
 - Le **entrate** vengono divise tra i giorni che restano.
+- **Da parte**: risparmi del periodo e **spese fisse** (affitto, bollette, abbonamenti) vengono tolti subito, così la quota giornaliera è già giusta dal primo giorno. Il giorno della scadenza compare un banner nell'app ("È già calcolato nella quota"), con *Conferma* o *Cambia importo* per le bollette.
+- **Imprevisti**: in caso di emergenza puoi pagare una spesa precisa con i risparmi. Non aumenta la quota e nei movimenti appare come "Imprevisto · dai risparmi".
+- **Categorie tue** per uscite ed entrate (fino a 8 per tipo): in *Periodi → Categorie* o con il **+** accanto ad "Altro".
 - Calendario con tre stati riconoscibili anche dalla forma: cerchio pieno (in quota), cerchio vuoto (zero spese), cerchio con punto (sforato).
 - In **italiano, inglese e spagnolo** (si sceglie in *Periodi → Lingua*).
 - Tema chiaro e scuro automatici, funziona **offline**, si installa sulla schermata Home.
@@ -38,7 +41,7 @@ Periodi e movimenti restano solo nel browser del telefono e non vengono mai invi
 
 | File | A cosa serve |
 |---|---|
-| `index.html` | Struttura dell'app (Oggi, Movimenti, Calendario, Periodi) |
+| `index.html` | Struttura dell'app (Oggi, Da parte, Movimenti, Calendario, Periodi) |
 | `style.css` | Colori, font e layout, tema chiaro e scuro |
 | `i18n.js` | Tutti i testi in italiano, inglese e spagnolo |
 | `app.js` | Logica: periodi, movimenti, quota, riporto, backup |
@@ -51,7 +54,7 @@ Periodi e movimenti restano solo nel browser del telefono e non vengono mai invi
 Nessuna build: è HTML, CSS e JavaScript puro, pubblicato con GitHub Pages dal branch `main`.
 
 ## Aggiornare l'app
-Dopo ogni modifica, in `sw.js` aumenta il numero in `const VERSION = 'quota-v7';` (`quota-v8`, `quota-v9`…), così i telefoni scaricano la nuova versione.
+Dopo ogni modifica, in `sw.js` aumenta il numero in `const VERSION = 'quota-v8';` (`quota-v9`, `quota-v10`…), così i telefoni scaricano la nuova versione.
 
 ## Identità
 

@@ -34,6 +34,8 @@
         </button>
       </header>
 
+      <div class="dues" id="dueBanners"></div>
+
       <div class="ring-wrap" id="ringWrap">
         <svg class="ring" viewBox="0 0 200 200" aria-hidden="true">
           <circle class="ring-track" cx="100" cy="100" r="88"/>
@@ -91,6 +93,42 @@
       <article class="card">
         <div class="card-head"><h2 data-i18n="today.moves">Movimenti di oggi</h2><button type="button" class="link" data-go="moves" data-i18n="today.seeAll">Vedi tutti</button></div>
         <ul class="list" id="todayList"></ul>
+      </article>
+    </section>
+
+    <!-- ================= DA PARTE ================= -->
+    <section class="view" data-view="set" hidden>
+      <header class="top"><h1 data-i18n="set.title">Da parte</h1><button class="pill" type="button" data-open-periods><span class="period-name" data-i18n="period">Periodo</span></button></header>
+
+      <article class="card set-sum">
+        <span class="set-label" data-i18n="set.total">In questo periodo metti da parte</span>
+        <span class="set-amt num" id="setTotal">0 €</span>
+        <span class="set-split num" id="setSplit"></span>
+        <p class="hint" data-i18n="set.hint">La quota di ogni giorno è già calcolata senza questi soldi.</p>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><h2 data-i18n="sav.title">Risparmi</h2><button type="button" class="link" id="savChange" data-i18n="sav.change">Cambia</button></div>
+        <div class="kv num"><span data-i18n="sav.period">In questo periodo</span><b id="savPeriod"></b></div>
+        <div class="kv num"><span data-i18n="sav.pot">Totale nei risparmi</span><b id="savPot"></b></div>
+        <p class="hint" id="savNote"></p>
+        <button type="button" class="btn wide btn-sav" id="savUse">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 8v4M12 15.5v.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <span data-i18n="sav.use">Usa per un imprevisto</span>
+        </button>
+        <div id="savHistory" hidden>
+          <p class="sav-count num" id="savCount"></p>
+          <ul class="list" id="savList"></ul>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><h2 data-i18n="fx.title">Spese fisse</h2></div>
+        <ul class="list fx-list" id="fxList"></ul>
+        <button type="button" class="btn wide" id="fxAdd">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          <span data-i18n="fx.add">Aggiungi spesa fissa</span>
+        </button>
       </article>
     </section>
 
@@ -168,6 +206,21 @@
       </article>
 
       <article class="card">
+        <div class="card-head"><h2 data-i18n="cats.title">Categorie</h2></div>
+        <p class="hint" id="catsDesc"></p>
+        <div class="seg seg-sm" role="group" aria-label="Categorie" data-i18n-aria="cats.title">
+          <button type="button" data-cats-type="out" aria-pressed="true" data-i18n="cats.out">Uscite</button>
+          <button type="button" data-cats-type="in" aria-pressed="false" data-i18n="cats.in">Entrate</button>
+        </div>
+        <div class="my-cats" id="myCats"></div>
+        <form class="add-row" id="catForm" autocomplete="off">
+          <label class="sr" for="catName" data-i18n="cats.new">Nuova categoria</label>
+          <input id="catName" maxlength="20" placeholder="Nuova categoria" data-i18n-ph="cats.newPh">
+          <button type="submit" class="btn accent" data-i18n="cats.ok">Aggiungi</button>
+        </form>
+      </article>
+
+      <article class="card">
         <div class="card-head"><h2 data-i18n="lang.title">Lingua</h2></div>
         <div class="langs" id="langOpts" role="radiogroup" aria-label="Lingua" data-i18n-aria="lang.title"></div>
       </article>
@@ -212,6 +265,7 @@
           <div class="field"><label for="pEnd" data-i18n="sh.to">Al</label><input id="pEnd" type="date"></div>
         </div>
         <div class="field"><label for="pBase" data-i18n="sh.base">Soldi all'inizio (€)</label><input id="pBase" class="num" inputmode="decimal" placeholder="Es. 400 — o 0 se arrivano come entrate" data-i18n-ph="sh.basePh"></div>
+        <div class="field"><label for="pSaveAmt" data-i18n="sh.saveField">Da mettere nei risparmi (€)</label><input id="pSaveAmt" class="num" inputmode="decimal" placeholder="Es. 500 — facoltativo" data-i18n-ph="sh.savePh"></div>
         <div class="example num" id="pExample"></div>
         <p class="error" id="pError" hidden></p>
         <div class="row">
@@ -223,11 +277,76 @@
       </div>
     </div>
 
+    <!-- ================= SPESA FISSA ================= -->
+    <div class="sheet-wrap" id="fsheet" hidden>
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fTitle">
+        <h2 id="fTitle">Nuova spesa fissa</h2>
+        <p class="hint" data-i18n="fx.desc">Viene tolta subito dai soldi del periodo, così la quota è già giusta. Il giorno della scadenza Quota te lo ricorda.</p>
+        <div class="cats" id="fKinds" role="radiogroup" aria-label="Tipo" data-i18n-aria="fx.kind"></div>
+        <div class="field"><label for="fName" data-i18n="fx.name">Nome</label><input id="fName" maxlength="40" autocomplete="off"></div>
+        <div class="two">
+          <div class="field"><label for="fAmt" data-i18n="fx.amount">Importo (€)</label><input id="fAmt" class="num" inputmode="decimal" placeholder="0,00"></div>
+          <div class="field"><label for="fFirst" data-i18n="fx.first">Prossima scadenza</label><input id="fFirst" type="date"></div>
+        </div>
+        <div class="field"><span class="flabel" data-i18n="fx.repeat">Ogni quanto</span>
+          <div class="seg seg-sm seg-4" id="fRepeat" role="group" aria-label="Ogni quanto" data-i18n-aria="fx.repeat">
+            <button type="button" data-repeat="month" data-i18n="fx.rMonth">Ogni mese</button>
+            <button type="button" data-repeat="2month" data-i18n="fx.r2Month">Ogni 2 mesi</button>
+            <button type="button" data-repeat="year" data-i18n="fx.rYear">Ogni anno</button>
+            <button type="button" data-repeat="once" data-i18n="fx.rOnce">Una volta</button>
+          </div>
+        </div>
+        <div class="field" id="fByWrap"><span class="flabel" data-i18n="fx.which">Quale giorno</span>
+          <div class="seg seg-sm" id="fBy" role="group" aria-label="Quale giorno" data-i18n-aria="fx.which">
+            <button type="button" data-by="day"></button>
+            <button type="button" data-by="weekday"></button>
+          </div>
+        </div>
+        <p class="error" id="fError" hidden></p>
+        <div class="row">
+          <button class="btn accent" id="fSave" type="button" data-i18n="sh.save">Salva</button>
+          <button class="btn" id="fCancel" type="button" data-i18n="sh.cancel">Annulla</button>
+        </div>
+        <div id="fDelZone"></div>
+      </div>
+    </div>
+
+    <!-- ================= IMPREVISTO DAI RISPARMI ================= -->
+    <div class="sheet-wrap" id="esheet" hidden>
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="eTitle">
+        <h2 id="eTitle" data-i18n="em.title">Usa i risparmi</h2>
+        <div id="eStep1">
+          <p class="hint" data-i18n="em.desc">Solo per un imprevisto: la spesa viene presa dai risparmi, non dalla quota. La quota di oggi resta uguale.</p>
+          <div class="field"><label for="eAmt" data-i18n="em.amount">Importo (€)</label><input id="eAmt" class="num" inputmode="decimal" placeholder="0,00"></div>
+          <div class="field"><label for="eNote" data-i18n="em.note">Che cosa è successo?</label><input id="eNote" maxlength="60" autocomplete="off" placeholder="Es. Veterinario" data-i18n-ph="em.notePh"></div>
+          <p class="error" id="eError" hidden></p>
+          <div class="row">
+            <button class="btn accent" id="eNext" type="button" data-i18n="em.next">Continua</button>
+            <button class="btn" id="eCancel" type="button" data-i18n="sh.cancel">Annulla</button>
+          </div>
+        </div>
+        <div id="eStep2" hidden>
+          <div class="em-sure">
+            <b data-i18n="em.sure">Vuoi davvero usarli? Questi erano i tuoi risparmi.</b>
+            <span id="eSureSub" class="num"></span>
+          </div>
+          <div class="row">
+            <button class="btn btn-sav-solid" id="eYes" type="button" data-i18n="em.yes">Sì, usa i risparmi</button>
+            <button class="btn" id="eBack" type="button" data-i18n="em.back">Indietro</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ================= NAV ================= -->
     <nav class="nav" aria-label="Sezioni" data-i18n-aria="nav.sections">
       <button data-nav="today" aria-current="page">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-6 8 6v8a1 1 0 0 1-1 1h-4v-5h-6v5H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
         <span data-i18n="nav.today">Oggi</span>
+      </button>
+      <button data-nav="set">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8M9 3v3c-2 1-4 3-4 6v6a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3v-6c0-3-2-5-4-6V3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 13h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <span data-i18n="nav.set">Da parte</span>
       </button>
       <button data-nav="moves">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="4.5" cy="6" r="1.2" fill="currentColor"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor"/><circle cx="4.5" cy="18" r="1.2" fill="currentColor"/></svg>

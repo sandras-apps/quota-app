@@ -75,7 +75,14 @@
     up: '<path d="M12 19V5M6 11l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
     down: '<path d="M12 5v14M6 13l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
     plus: '<path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>',
-    flag: '<path d="M6 21V4M6 4h11l-2 4 2 4H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'
+    flag: '<path d="M6 21V4M6 4h11l-2 4 2 4H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>',
+    tag: '<path d="M4 12.6V5a1 1 0 0 1 1-1h7.6a1 1 0 0 1 .7.3l6.4 6.4a1 1 0 0 1 0 1.4l-7.6 7.6a1 1 0 0 1-1.4 0l-6.4-6.4a1 1 0 0 1-.3-.7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="8.5" cy="8.5" r="1.4" fill="currentColor"/>',
+    shield: '<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 8v4M12 15.5v.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    key: '<circle cx="8" cy="15" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M11 12l8-8M16 7l2.5 2.5M14 9l2 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+    bolt: '<path d="M13 3L5 14h6l-1 7 8-11h-6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
+    repeat: '<path d="M4 11V9a3 3 0 0 1 3-3h12M16 3l3 3-3 3M20 13v2a3 3 0 0 1-3 3H5M8 21l-3-3 3-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+    jar: '<path d="M8 3h8M9 3v3c-2 1-4 3-4 6v6a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3v-6c0-3-2-5-4-6V3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 13h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+    check: '<path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'
   };
   const svg = (name) => '<svg viewBox="0 0 24 24" aria-hidden="true">' + (I[name] || I.dots) + '</svg>';
   const CATS = {
@@ -97,21 +104,47 @@
       { id: 'altro-in', name: 'Altro', icon: 'dots' }
     ]
   };
-  const catName = (c) => t('cat.' + c.id);
-  const catOf = (e) => { const l = CATS[e.type === 'in' ? 'in' : 'out']; return l.find((c) => c.id === e.cat) || l[l.length - 1]; };
+  // categorie tue (in Periodi → Categorie, o col "+" accanto ad Altro): vanno prima di "Altro"
+  const MAX_CATS = 8;
+  const myCats = (ty) => ((state.cats && state.cats[ty]) || []).map((c) => ({ id: c.id, name: c.name, icon: 'tag', custom: true }));
+  const cats = (ty) => { const base = CATS[ty]; return base.slice(0, -1).concat(myCats(ty), base.slice(-1)); };
+  const catName = (c) => c.custom ? c.name : t('cat.' + c.id);
+  // spese prese dai risparmi (imprevisti): non toccano la quota
+  const SAV = { id: 'imprevisto', icon: 'shield' };
+  const catOf = (e) => { if (e.fromSavings) return SAV; const l = cats(e.type === 'in' ? 'in' : 'out'); return l.find((c) => c.id === e.cat) || l[l.length - 1]; };
+  function addCat(ty, raw) {
+    const name = String(raw || '').trim().replace(/\s+/g, ' ').slice(0, 20);
+    if (!name) return null;
+    const all = cats(ty);
+    const same = all.find((c) => catName(c).toLowerCase() === name.toLowerCase());
+    if (same) return same.id;
+    if (myCats(ty).length >= MAX_CATS) { toast(t('cats.full', { n: MAX_CATS })); return null; }
+    state.cats = state.cats || { out: [], in: [] };
+    state.cats[ty] = state.cats[ty] || [];
+    const id = 'c_' + uid();
+    state.cats[ty].push({ id, name });
+    save();
+    return id;
+  }
 
   /* ---------------- stato ---------------- */
   const KEY = 'quota-v1';
-  let state = { periods: [], current: null, entries: {}, settings: { overspend: 'riporto' } };
+  // cats: categorie tue · fixed: spese fisse (affitto, bollette…) · paid: scadenze già viste/pagate, per periodo
+  let state = { periods: [], current: null, entries: {}, settings: { overspend: 'riporto' }, cats: { out: [], in: [] }, fixed: [], paid: {} };
   try { const raw = localStorage.getItem(KEY); if (raw) state = Object.assign(state, JSON.parse(raw)); } catch (e) { /* storage non disponibile */ }
   state.settings = Object.assign({ overspend: 'riporto' }, state.settings || {});
+  state.cats = Object.assign({ out: [], in: [] }, state.cats || {});
+  state.fixed = Array.isArray(state.fixed) ? state.fixed : [];
+  state.paid = state.paid && typeof state.paid === 'object' ? state.paid : {};
   if (!state.settings.lang) {
     const nav = (navigator.languages && navigator.languages[0]) || navigator.language || 'it';
     const guess = nav.slice(0, 2).toLowerCase();
     state.settings.lang = L.LANGS.some((x) => x.id === guess) ? guess : 'it';
   }
   setLang(state.settings.lang);
+  let memo = {};
   const save = () => {
+    memo = {};
     try { localStorage.setItem(KEY, JSON.stringify(state)); }
     catch (e) { toast(t('saveFail')); }
   };
@@ -141,8 +174,61 @@
   // oppure "divisa sui giorni" (es. lo stipendio: si spalma fino alla fine del periodo).
   // Le entrate vecchie senza scelta: i rimborsi contano subito, il resto viene diviso.
   const isOneOff = (e) => e.type === 'in' && (e.spread === false || (e.spread === undefined && e.cat === 'rimborso'));
+
+  /* ---------------- da parte: risparmi e spese fisse ----------------
+     I risparmi del periodo e le spese fisse (affitto, bollette, abbonamenti) che scadono nel periodo
+     vengono tolti subito dai soldi del periodo: la quota giornaliera è già calcolata senza di loro.
+     Le spese prese dai risparmi (imprevisti) non contano nella quota. */
+  const counts = (e) => e.type !== 'in' && !e.fromSavings;
+  const dim = (y, m) => new Date(y, m + 1, 0).getDate();
+  // n-esimo giorno della settimana del mese (pos 1–4, -1 = l'ultimo)
+  function nthWeekday(y, m, wd, pos) {
+    if (pos === -1) { const last = new Date(y, m, dim(y, m)); return new Date(y, m, dim(y, m) - ((last.getDay() - wd + 7) % 7)); }
+    const first = new Date(y, m, 1);
+    return new Date(y, m, 1 + ((wd - first.getDay() + 7) % 7) + (pos - 1) * 7);
+  }
+  const posOf = (s) => { const n = Math.ceil(toD(s).getDate() / 7); return n >= 5 ? -1 : n; };
+  const STEP = { month: 1, '2month': 2, year: 12 };
+  // date in cui scade una spesa fissa tra from e to (comprese)
+  function occurrences(f, from, to) {
+    if (f.repeat === 'once' || !STEP[f.repeat]) return f.first >= from && f.first <= to ? [f.first] : [];
+    const step = STEP[f.repeat], F = toD(f.first), out = [];
+    const byWd = f.by === 'weekday' && f.repeat !== 'year';
+    const pos = byWd ? posOf(f.first) : 0;
+    const startK = Math.max(0, Math.floor(((toD(from).getFullYear() - F.getFullYear()) * 12 + toD(from).getMonth() - F.getMonth()) / step) - 1);
+    for (let k = startK; k < startK + 400; k++) {
+      const mi = F.getMonth() + k * step, y = F.getFullYear() + Math.floor(mi / 12), m = ((mi % 12) + 12) % 12;
+      const d = byWd ? ymd(nthWeekday(y, m, F.getDay(), pos)) : ymd(new Date(y, m, Math.min(F.getDate(), dim(y, m))));
+      if (d > to) break;
+      if (d >= from && d >= f.first) out.push(d);
+    }
+    return out;
+  }
+  const occKey = (f, d) => f.id + '@' + d;
+  const paidOf = (p) => (state.paid[p.id] = state.paid[p.id] || {});
+  // tutte le scadenze del periodo, in ordine di data
+  function dues(p) {
+    const k = 'dues:' + p.id + ':' + p.start + ':' + p.end;
+    if (memo[k]) return memo[k];
+    const done = state.paid[p.id] || {};
+    const r = [];
+    state.fixed.forEach((f) => occurrences(f, p.start, p.end).forEach((d) => {
+      const h = done[occKey(f, d)];
+      r.push({ f, date: d, key: occKey(f, d), amount: h ? h.amount : f.amount, done: !!h });
+    }));
+    return (memo[k] = r.sort((a, b) => a.date.localeCompare(b.date)));
+  }
+  const fixedTotal = (p) => dues(p).reduce((a, x) => a + x.amount, 0);
+  const reserved = (p) => (p.save || 0) + fixedTotal(p);
+  // risparmi accumulati con Quota: messi da parte nei periodi già iniziati − imprevisti pagati
+  function savingsPot() {
+    const inn = state.periods.reduce((a, p) => a + (p.start <= today ? (p.save || 0) : 0), 0);
+    const used = Object.values(state.entries).reduce((a, l) => a + (l || []).reduce((b, e) => b + (e.fromSavings ? e.amount : 0), 0), 0);
+    return Math.round((inn - used) * 100) / 100;
+  }
+
   function sources(p) {
-    const s = [{ date: p.start, amount: p.base || 0 }];
+    const s = [{ date: p.start, amount: (p.base || 0) - reserved(p) }];
     list().forEach((e) => { if (e.type === 'in') s.push({ date: e.date < p.start ? p.start : e.date, amount: e.amount, once: isOneOff(e) }); });
     return s;
   }
@@ -157,11 +243,11 @@
     return t;
   }
   const quotaOn = (p, day) => accrued(p, day) - (day > p.start ? accrued(p, addDays(day, -1)) : 0);
-  const outOn = (day) => list().reduce((a, e) => a + (e.type !== 'in' && e.date === day ? e.amount : 0), 0);
-  const outBefore = (day) => list().reduce((a, e) => a + (e.type !== 'in' && e.date < day ? e.amount : 0), 0);
+  const outOn = (day) => list().reduce((a, e) => a + (counts(e) && e.date === day ? e.amount : 0), 0);
+  const outBefore = (day) => list().reduce((a, e) => a + (counts(e) && e.date < day ? e.amount : 0), 0);
   const availableAt = (p, day) => accrued(p, day) - outBefore(day);
   const mode = () => state.settings.overspend === 'ricalcola' ? 'ricalcola' : 'riporto';
-  const knownMoney = (p, day) => (p.base || 0) + list().reduce((a, e) => a + (e.type === 'in' && e.date <= day ? e.amount : 0), 0);
+  const knownMoney = (p, day) => (p.base || 0) - reserved(p) + list().reduce((a, e) => a + (e.type === 'in' && e.date <= day ? e.amount : 0), 0);
   function dayInfo(p, day) {
     const q0 = quotaOn(p, day);
     if (mode() === 'ricalcola') {
@@ -202,8 +288,8 @@
     return dayInfo(p, d).avail - s < -0.005 ? 'bad' : 'ok';
   }
   const totals = (p) => {
-    const tin = (p.base || 0) + list().reduce((a, e) => a + (e.type === 'in' ? e.amount : 0), 0);
-    const tout = list().reduce((a, e) => a + (e.type !== 'in' ? e.amount : 0), 0);
+    const tin = (p.base || 0) - reserved(p) + list().reduce((a, e) => a + (e.type === 'in' ? e.amount : 0), 0);
+    const tout = list().reduce((a, e) => a + (counts(e) ? e.amount : 0), 0);
     return { tin, tout, left: tin - tout };
   };
   const clampSel = (p) => inPeriod(p, today) ? today : (today < p.start ? p.start : p.end);
@@ -225,9 +311,63 @@
     $('statusSub').textContent = sub;
   }
 
+  /* ---------------- banner delle scadenze (dentro l'app, niente notifiche) ---------------- */
+  const KIND_ICON = { rent: 'home', bill: 'bolt', sub: 'repeat', other: 'flag' };
+  let dueEditing = null;
+  function renderDues(p) {
+    const box = $('dueBanners');
+    const pend = inPeriod(p, today) ? dues(p).filter((x) => !x.done && x.date <= today) : [];
+    box.innerHTML = pend.map((x) => {
+      const f = x.f, isRent = f.kind === 'rent';
+      const when = x.date === today ? t('due.today') : t('due.was', { date: short(x.date) });
+      let act;
+      if (dueEditing === x.key) {
+        act = '<div class="due-edit"><input class="num" inputmode="decimal" data-due-input value="' + String(x.amount).replace('.', ',') + '" aria-label="' + esc(t('fx.amount')) + '">' +
+          '<button type="button" class="btn accent" data-due-save>' + esc(t('due.save')) + '</button></div>';
+      } else if (isRent) {
+        act = '<div class="due-act"><button type="button" class="btn" data-due-ok>' + esc(t('due.ok')) + '</button></div>';
+      } else {
+        act = '<div class="due-act"><button type="button" class="btn" data-due-ok>' + esc(t('due.confirm')) + '</button>' +
+          '<button type="button" class="link" data-due-change>' + esc(t('due.change')) + '</button></div>';
+      }
+      return '<div class="due" data-key="' + esc(x.key) + '" role="status">' +
+        '<span class="due-ico">' + svg(KIND_ICON[f.kind] || 'flag') + '</span>' +
+        '<div class="due-txt"><span class="due-when">' + esc(when) + '</span>' +
+        '<b><span>' + esc(f.name) + '</span> <span class="num">' + money(x.amount) + '</span></b>' +
+        '<span class="due-sub">' + esc(t('due.calc')) + '</span>' + act + '</div>' +
+        '<button type="button" class="due-x" data-due-ok aria-label="' + esc(t('due.close')) + '">×</button></div>';
+    }).join('');
+    box.hidden = !pend.length;
+  }
+  function markPaid(key, amount) {
+    const p = cur(); if (!p) return;
+    paidOf(p)[key] = { amount: Math.round(amount * 100) / 100, at: today };
+    dueEditing = null;
+    save(); renderAll();
+  }
+  $('dueBanners').addEventListener('click', (ev) => {
+    const box = ev.target.closest('.due'); if (!box) return;
+    const p = cur(); if (!p) return;
+    const x = dues(p).find((d) => d.key === box.dataset.key); if (!x) return;
+    if (ev.target.closest('[data-due-change]')) { dueEditing = x.key; renderDues(p); const i = $('dueBanners').querySelector('[data-due-input]'); if (i) { i.focus(); i.select(); } return; }
+    if (ev.target.closest('[data-due-save]')) {
+      const v = parseAmt(box.querySelector('[data-due-input]').value);
+      if (!(v >= 0)) { box.querySelector('[data-due-input]').focus(); return; }
+      const d = Math.round((v - x.amount) * 100) / 100;
+      markPaid(x.key, v);
+      toast(d > 0 ? t('due.more', { amt: money(d) }) : d < 0 ? t('due.less', { amt: money(-d) }) : t('due.done'));
+      return;
+    }
+    if (ev.target.closest('[data-due-ok]')) { markPaid(x.key, x.amount); toast(t('due.done')); }
+  });
+  $('dueBanners').addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter' && ev.target.matches('[data-due-input]')) { ev.preventDefault(); ev.target.closest('.due').querySelector('[data-due-save]').click(); }
+  });
+
   function renderToday() {
     const p = cur(); if (!p) return;
     $$('.period-name').forEach((el) => { el.textContent = p.name || range(p); });
+    renderDues(p);
 
     if (!inPeriod(p, today)) {
       const tot = totals(p);
@@ -311,6 +451,13 @@
 
   function itemHTML(e) {
     const c = catOf(e);
+    if (e.fromSavings) {
+      return '<li class="item sav" data-id="' + e.id + '">' +
+        '<span class="ico">' + svg(c.icon) + '</span>' +
+        '<span class="txt"><b>' + esc(e.note || t('sav.emergency')) + '</b><span class="sav-tag">' + esc(t('sav.tag')) + '</span></span>' +
+        '<span class="amt-v num">−' + money(e.amount) + '</span>' +
+        '<button type="button" class="del" aria-label="' + t('item.delete') + '">×</button></li>';
+    }
     return '<li class="item' + (e.type === 'in' ? ' in' : '') + '" data-id="' + e.id + '">' +
       '<span class="ico">' + svg(c.icon) + '</span>' +
       '<span class="txt"><b>' + esc(e.note || catName(c)) + '</b><span>' + esc(catName(c) + (e.type === 'in' ? ' · ' + (isOneOff(e) ? t('item.once') : t('item.spread')) : '')) + '</span></span>' +
@@ -318,10 +465,38 @@
       '<button type="button" class="del" aria-label="' + t('item.delete') + '">×</button></li>';
   }
 
+  let newCatOpen = false;
   function renderCats() {
-    $('cats').innerHTML = CATS[type].map((c) =>
+    const l = cats(type);
+    if (!l.some((c) => c.id === cat)) cat = l[0].id;
+    let h = l.map((c) =>
       '<button type="button" class="cat" role="radio" aria-checked="' + (c.id === cat) + '" data-cat="' + c.id + '">' + svg(c.icon) + esc(catName(c)) + '</button>'
     ).join('');
+    if (newCatOpen) {
+      h += '<span class="cat-new"><input id="newCat" maxlength="20" autocomplete="off" placeholder="' + esc(t('cats.newPh')) + '" aria-label="' + esc(t('cats.new')) + '">' +
+        '<button type="button" class="btn accent" data-newcat-ok>' + esc(t('cats.ok')) + '</button>' +
+        '<button type="button" class="cat-x" data-newcat-no aria-label="' + esc(t('sh.cancel')) + '">×</button></span>';
+    } else if (myCats(type).length < MAX_CATS) {
+      h += '<button type="button" class="cat cat-plus" data-newcat aria-label="' + esc(t('cats.new')) + '">' + svg('plus') + '</button>';
+    }
+    $('cats').innerHTML = h;
+    if (newCatOpen) {
+      const inp = $('newCat');
+      inp.focus();
+      inp.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') { ev.preventDefault(); confirmNewCat(); }
+        if (ev.key === 'Escape') { newCatOpen = false; renderCats(); }
+      });
+    }
+  }
+  function confirmNewCat() {
+    const v = $('newCat') ? $('newCat').value : '';
+    if (!v.trim()) { newCatOpen = false; renderCats(); return; }
+    const id = addCat(type, v);
+    if (!id) return;
+    cat = id; newCatOpen = false;
+    renderCats(); renderPeriods();
+    toast(t('cats.added'));
   }
 
   /* ---------------- render: Calendario ---------------- */
@@ -390,25 +565,201 @@
     const items = list().filter((e) => filter === 'all' || (filter === 'in' ? e.type === 'in' : e.type !== 'in'));
     const groups = {};
     items.forEach((e) => {
-      const c = catOf(e), k = (e.type === 'in' ? 'in:' : 'out:') + c.id;
-      groups[k] = groups[k] || { c, in: e.type === 'in', v: 0 };
+      const c = catOf(e), k = (e.fromSavings ? 'sav:' : e.type === 'in' ? 'in:' : 'out:') + c.id;
+      groups[k] = groups[k] || { c, in: e.type === 'in', sav: !!e.fromSavings, v: 0 };
       groups[k].v += e.amount;
     });
-    const arr = Object.values(groups).sort((a, b) => b.v - a.v);
+    const arr = Object.values(groups).sort((a, b) => (a.sav - b.sav) || (b.v - a.v));
     const max = arr.reduce((m, g) => Math.max(m, g.v), 0);
     $('catTotals').innerHTML = arr.length ? arr.map((g) =>
-      '<div class="ct' + (g.in ? ' in' : '') + '"><span class="ico">' + svg(g.c.icon) + '</span><span class="n">' + esc(catName(g.c)) + '</span><span class="v num">' + money(g.v) + '</span>' +
+      '<div class="ct' + (g.in ? ' in' : '') + (g.sav ? ' sav' : '') + '"><span class="ico">' + svg(g.c.icon) + '</span><span class="n">' + esc(g.sav ? t('sav.groupName') : catName(g.c)) + '</span><span class="v num">' + money(g.v) + '</span>' +
       '<div class="bar"><span style="width:' + (g.v / max * 100) + '%"></span></div></div>'
     ).join('') : '<p class="empty">' + t('moves.empty') + '</p>';
 
     const byDay = {};
     items.forEach((e) => { (byDay[e.date] = byDay[e.date] || []).push(e); });
     $('movesList').innerHTML = Object.keys(byDay).sort().reverse().map((d) => {
-      const net = byDay[d].reduce((a, e) => a + (e.type === 'in' ? e.amount : -e.amount), 0);
+      // gli imprevisti presi dai risparmi non contano nel saldo del giorno
+      const net = byDay[d].reduce((a, e) => a + (e.fromSavings ? 0 : e.type === 'in' ? e.amount : -e.amount), 0);
       return '<div class="group"><h3><span>' + (d === today ? t('cal.today') : long(d)) + '</span><span class="num">' + (net >= 0 ? '+' : '−') + money(Math.abs(net)) + '</span></h3>' +
         '<div class="card"><ul class="list">' + byDay[d].map(itemHTML).join('') + '</ul></div></div>';
     }).join('');
   }
+
+  /* ---------------- render: Da parte ---------------- */
+  const POS_KEYS = { 1: '1', 2: '2', 3: '3', 4: '4', '-1': 'last' };
+  function wdText(first) {
+    const d = toD(first), wd = d.getDay();
+    const name = weekdays('long')[(wd + 6) % 7];
+    // in italiano "domenica" è femminile: "la prima domenica"
+    return t('fx.pos' + POS_KEYS[posOf(first)] + (wd === 0 ? '_f' : ''), { wd: name });
+  }
+  function ruleText(f) {
+    if (f.repeat === 'once') return t('fx.ruleOnce', { date: short(f.first) });
+    if (f.repeat === 'year') return t('fx.ruleYear', { date: short(f.first) });
+    const when = f.by === 'weekday' ? wdText(f.first) : t('fx.whenDay', { d: toD(f.first).getDate() });
+    return t(f.repeat === '2month' ? 'fx.rule2Month' : 'fx.ruleMonth', { when });
+  }
+  function renderSet() {
+    const p = cur(); if (!p) return;
+    const ft = fixedTotal(p), sv = p.save || 0, pot = savingsPot();
+    $('setTotal').textContent = money(sv + ft);
+    $('setSplit').textContent = t('set.split', { a: money(sv), b: money(ft) });
+    $('savPeriod').textContent = money(sv);
+    $('savPot').textContent = money(Math.max(0, pot));
+    $('savUse').disabled = pot <= 0;
+    $('savNote').textContent = pot > 0 ? t('sav.useHint') : t('sav.empty');
+    const used = list().filter((e) => e.fromSavings).sort((a, b) => b.date.localeCompare(a.date));
+    $('savHistory').hidden = !used.length;
+    if (used.length) {
+      $('savCount').textContent = tn('sav.used', used.length, { amt: money(used.reduce((a, e) => a + e.amount, 0)) });
+      $('savList').innerHTML = used.map((e) => itemHTML(e).replace('<span class="sav-tag">' + esc(t('sav.tag')) + '</span>', '<span class="sav-tag">' + esc(long(e.date)) + '</span>')).join('');
+    }
+    const ds = dues(p);
+    const fx = state.fixed.slice().sort((a, b) => b.amount - a.amount);
+    $('fxList').innerHTML = fx.length ? fx.map((f) => {
+      const mine = ds.filter((x) => x.f.id === f.id);
+      const st = mine.length ? mine.map((x) => {
+        if (x.done) return '<span class="fx-st ok">' + svg('check') + esc(t('fx.paidOn', { date: short(x.date) })) + '</span>';
+        if (x.date < today) return '<span class="fx-st late">' + esc(t('fx.toConfirm', { date: short(x.date) })) + '</span>';
+        return '<span class="fx-st">' + esc(x.date === today ? t('fx.dueToday') : t('fx.dueOn', { date: short(x.date) })) + '</span>';
+      }).join('') : '<span class="fx-st off">' + esc(t('fx.notThis')) + '</span>';
+      return '<li class="item fx" data-fx="' + f.id + '" role="button" tabindex="0">' +
+        '<span class="ico">' + svg(KIND_ICON[f.kind] || 'flag') + '</span>' +
+        '<span class="txt"><b>' + esc(f.name) + '</b><span>' + esc(ruleText(f)) + '</span>' + st + '</span>' +
+        '<span class="amt-v num">' + money(f.amount) + '</span></li>';
+    }).join('') : '<li class="empty">' + esc(t('fx.empty')) + '</li>';
+  }
+  $('fxList').addEventListener('click', (ev) => { const li = ev.target.closest('[data-fx]'); if (li) openFixed(state.fixed.find((f) => f.id === li.dataset.fx)); });
+  $('fxList').addEventListener('keydown', (ev) => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches('[data-fx]')) { ev.preventDefault(); ev.target.click(); } });
+  $('fxAdd').addEventListener('click', () => openFixed(null));
+  $('savChange').addEventListener('click', () => { openEditor(cur()); setTimeout(() => $('pSaveAmt').focus(), 50); });
+  $('savList').addEventListener('click', onListClick);
+
+  /* ---------------- scheda spesa fissa ---------------- */
+  const KINDS = ['rent', 'bill', 'sub', 'other'];
+  let fx = null; // bozza in modifica
+  function openFixed(f) {
+    fx = f ? Object.assign({}, f) : { id: null, kind: 'rent', name: '', amount: 0, first: '', repeat: 'month', by: 'day' };
+    if (!f) {
+      // proposta: il primo giorno del mese prossimo
+      const d = toD(today); fx.first = ymd(new Date(d.getFullYear(), d.getMonth() + 1, 1));
+    }
+    $('fTitle').textContent = f ? t('fx.editTitle') : t('fx.newTitle');
+    $('fName').value = fx.name;
+    $('fAmt').value = fx.amount ? String(fx.amount).replace('.', ',') : '';
+    $('fFirst').value = fx.first;
+    $('fError').hidden = true;
+    const z = $('fDelZone');
+    z.innerHTML = f ? '<button type="button" class="btn" id="fDel">' + esc(t('fx.delete')) + '</button>' : '';
+    if (f) $('fDel').addEventListener('click', () => {
+      z.innerHTML = '<div class="confirm"><span>' + esc(t('fx.deleteConfirm')) + '</span><button type="button" class="btn danger" id="fDelYes">' + esc(t('sh.deleteYes')) + '</button></div>';
+      $('fDelYes').addEventListener('click', () => {
+        state.fixed = state.fixed.filter((x) => x.id !== f.id);
+        save(); closeSheet('fsheet'); renderAll(); toast(t('fx.deleted'));
+      });
+    });
+    renderFixedForm();
+    openSheet('fsheet');
+  }
+  function renderFixedForm() {
+    $('fKinds').innerHTML = KINDS.map((k) =>
+      '<button type="button" class="cat" role="radio" aria-checked="' + (fx.kind === k) + '" data-kind="' + k + '">' + svg(KIND_ICON[k]) + esc(t('fx.k.' + k)) + '</button>').join('');
+    $('fName').placeholder = t('fx.k.' + fx.kind + 'Ph');
+    $$('#fRepeat [data-repeat]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.repeat === fx.repeat)));
+    const first = $('fFirst').value;
+    const showBy = (fx.repeat === 'month' || fx.repeat === '2month') && !!first;
+    $('fByWrap').hidden = !showBy;
+    if (showBy) {
+      const b = $$('#fBy [data-by]');
+      b[0].textContent = t('fx.byDay', { d: toD(first).getDate() });
+      b[1].textContent = t('fx.byWd', { when: wdText(first) });
+      b.forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.by === (fx.by || 'day'))));
+    }
+  }
+  $('fKinds').addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-kind]'); if (!b) return;
+    const prevPh = t('fx.k.' + fx.kind + 'Ph');
+    fx.kind = b.dataset.kind;
+    // se il nome era vuoto o il nome proposto, usa quello del nuovo tipo
+    if (!$('fName').value.trim() || $('fName').value === prevPh) $('fName').value = '';
+    renderFixedForm();
+  });
+  $('fRepeat').addEventListener('click', (ev) => { const b = ev.target.closest('[data-repeat]'); if (b) { fx.repeat = b.dataset.repeat; renderFixedForm(); } });
+  $('fBy').addEventListener('click', (ev) => { const b = ev.target.closest('[data-by]'); if (b) { fx.by = b.dataset.by; renderFixedForm(); } });
+  $('fFirst').addEventListener('input', renderFixedForm);
+  $('fCancel').addEventListener('click', () => closeSheet('fsheet'));
+  $('fsheet').addEventListener('click', (ev) => { if (ev.target === $('fsheet')) closeSheet('fsheet'); });
+  $('fSave').addEventListener('click', () => {
+    const err = (k) => { $('fError').textContent = t(k); $('fError').hidden = false; };
+    const name = $('fName').value.trim() || t('fx.k.' + fx.kind + 'Ph');
+    const amount = parseAmt($('fAmt').value), first = $('fFirst').value;
+    if (!(amount > 0)) { err('fx.badAmt'); $('fAmt').focus(); return; }
+    if (!isDay(first)) { err('fx.badDate'); return; }
+    const data = { kind: fx.kind, name: name.slice(0, 40), amount, first, repeat: fx.repeat, by: fx.by === 'weekday' ? 'weekday' : 'day' };
+    if (fx.id) Object.assign(state.fixed.find((x) => x.id === fx.id), data);
+    else state.fixed.push(Object.assign({ id: 'f_' + uid() }, data));
+    save(); closeSheet('fsheet'); renderAll();
+    toast(t('fx.saved'));
+  });
+
+  /* ---------------- imprevisto: spesa presa dai risparmi ---------------- */
+  let emDraft = null;
+  function openEmergency() {
+    emDraft = null;
+    $('eAmt').value = ''; $('eNote').value = ''; $('eError').hidden = true;
+    $('eStep1').hidden = false; $('eStep2').hidden = true;
+    openSheet('esheet');
+    setTimeout(() => $('eAmt').focus(), 50);
+  }
+  $('savUse').addEventListener('click', openEmergency);
+  $('eCancel').addEventListener('click', () => closeSheet('esheet'));
+  $('esheet').addEventListener('click', (ev) => { if (ev.target === $('esheet')) closeSheet('esheet'); });
+  $('eNext').addEventListener('click', () => {
+    const err = (s) => { $('eError').textContent = s; $('eError').hidden = false; };
+    const v = parseAmt($('eAmt').value), note = $('eNote').value.trim(), pot = savingsPot();
+    if (!(v > 0)) { err(t('em.badAmt')); $('eAmt').focus(); return; }
+    if (v > pot + 0.004) { err(t('em.tooMuch', { amt: money(Math.max(0, pot)) })); $('eAmt').focus(); return; }
+    if (!note) { err(t('em.badNote')); $('eNote').focus(); return; }
+    emDraft = { amount: v, note };
+    $('eSureSub').textContent = t('em.sureSub', { amt: money(v), note, left: money(pot - v) });
+    $('eStep1').hidden = true; $('eStep2').hidden = false;
+  });
+  $('eBack').addEventListener('click', () => { $('eStep1').hidden = false; $('eStep2').hidden = true; });
+  $('eYes').addEventListener('click', () => {
+    if (!emDraft || !cur()) return;
+    list().push({ id: uid(), date: today, amount: emDraft.amount, type: 'out', cat: 'imprevisto', note: emDraft.note, fromSavings: true });
+    emDraft = null;
+    save(); closeSheet('esheet'); renderAll();
+    toast(t('em.done'));
+  });
+
+  function openSheet(id) { $(id).hidden = false; document.body.style.overflow = 'hidden'; }
+  function closeSheet(id) { $(id).hidden = true; if ($('sheet').hidden && $('fsheet').hidden && $('esheet').hidden) document.body.style.overflow = ''; }
+
+  /* ---------------- categorie (in Periodi) ---------------- */
+  let catsType = 'out';
+  function renderMyCats() {
+    $('catsDesc').textContent = t('cats.desc', { n: MAX_CATS });
+    $$('[data-cats-type]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.catsType === catsType)));
+    const mine = myCats(catsType);
+    $('myCats').innerHTML = mine.length ? mine.map((c) =>
+      '<span class="my-cat">' + svg('tag') + '<span>' + esc(c.name) + '</span><button type="button" data-rmcat="' + c.id + '" aria-label="' + esc(t('cats.remove', { name: c.name })) + '">×</button></span>'
+    ).join('') : '<p class="empty">' + esc(t('cats.none')) + '</p>';
+    $('catForm').hidden = mine.length >= MAX_CATS;
+  }
+  $$('[data-cats-type]').forEach((b) => b.addEventListener('click', () => { catsType = b.dataset.catsType; renderMyCats(); }));
+  $('catForm').addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const v = $('catName').value;
+    if (!v.trim()) { $('catName').focus(); return; }
+    if (addCat(catsType, v)) { $('catName').value = ''; renderMyCats(); renderCats(); toast(t('cats.added')); }
+  });
+  $('myCats').addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-rmcat]'); if (!b) return;
+    state.cats[catsType] = (state.cats[catsType] || []).filter((c) => c.id !== b.dataset.rmcat);
+    save(); renderAll(); toast(t('cats.removed'));
+  });
 
   /* ---------------- render: Periodi ---------------- */
   function renderPeriods() {
@@ -421,6 +772,7 @@
     ).join('') : '<p class="empty">' + t('per.empty') + '</p>';
     $('langOpts').innerHTML = L.LANGS.map((x) => '<button type="button" role="radio" lang="' + x.id + '" data-lang="' + x.id + '" aria-checked="' + (x.id === lang) + '">' + x.name + '</button>').join('');
     $$('#modeOpts [data-mode]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.mode === mode())));
+    renderMyCats();
     if (typeof renderBackup === 'function') renderBackup();
   }
 
@@ -428,6 +780,7 @@
     applyStatic();
     renderCats();
     renderToday();
+    renderSet();
     renderCalendarView();
     renderMoves();
     renderPeriods();
@@ -454,13 +807,18 @@
   }
 
   /* ---------------- movimenti ---------------- */
-  $$('.seg button').forEach((b) => b.addEventListener('click', () => {
-    type = b.dataset.type; cat = CATS[type][0].id; spread = cat !== 'rimborso';
-    $$('.seg button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  $$('.seg [data-type]').forEach((b) => b.addEventListener('click', () => {
+    type = b.dataset.type; cat = cats(type)[0].id; spread = cat !== 'rimborso'; newCatOpen = false;
+    $$('.seg [data-type]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
     $('addCard').classList.toggle('in', type === 'in');
     renderCats(); renderToday();
   }));
-  $('cats').addEventListener('click', (ev) => { const b = ev.target.closest('[data-cat]'); if (b) { cat = b.dataset.cat; if (type === 'in') spread = cat !== 'rimborso'; renderCats(); renderWhen(); } });
+  $('cats').addEventListener('click', (ev) => {
+    if (ev.target.closest('[data-newcat]')) { newCatOpen = true; renderCats(); return; }
+    if (ev.target.closest('[data-newcat-ok]')) { confirmNewCat(); return; }
+    if (ev.target.closest('[data-newcat-no]')) { newCatOpen = false; renderCats(); return; }
+    const b = ev.target.closest('[data-cat]'); if (b) { cat = b.dataset.cat; newCatOpen = false; if (type === 'in') spread = cat !== 'rimborso'; renderCats(); renderWhen(); }
+  });
   function renderWhen() {
     $('when').hidden = type !== 'in';
     $$('#when [data-spread]').forEach((x) => x.setAttribute('aria-pressed', String((x.dataset.spread === '1') === spread)));
@@ -562,6 +920,7 @@
     $('pName').value = p ? (p.name || '') : '';
     $('pStart').value = sug.start; $('pEnd').value = sug.end;
     $('pBase').value = p && p.base ? String(p.base).replace('.', ',') : '';
+    $('pSaveAmt').value = p && p.save ? String(p.save).replace('.', ',') : '';
     $('pError').hidden = true;
     $('pCancel').hidden = !state.periods.length;
     $('pRestore').hidden = state.periods.length > 0;
@@ -572,6 +931,7 @@
       $('pDelYes').addEventListener('click', () => {
         state.periods = state.periods.filter((x) => x.id !== p.id);
         delete state.entries[p.id];
+        delete state.paid[p.id];
         if (state.current === p.id) state.current = pickCurrent();
         save(); closeEditor();
         if (cur()) { selDate = clampSel(cur()); renderAll(); } else openEditor(null);
@@ -583,20 +943,26 @@
   }
   function closeEditor() { $('sheet').hidden = true; document.body.style.overflow = ''; }
   function updateExample() {
-    const s = $('pStart').value, e = $('pEnd').value, b = parseAmt($('pBase').value);
+    const s = $('pStart').value, e = $('pEnd').value, b = parseAmt($('pBase').value), sv = parseAmt($('pSaveAmt').value);
     if (!s || !e || e < s) { $('pExample').textContent = t('sh.badDates'); return; }
-    const n = diff(s, e) + 1, q = (b > 0 ? b : 0) / n, days = tn('per.days', n);
-    $('pExample').innerHTML = b > 0
-      ? t('sh.example', { days, q: money(q), q2: money(q * 2) })
-      : t('sh.exampleNoBase', { days });
+    // risparmi e spese fisse che cadono in queste date vengono tolti prima di dividere
+    const svv = sv > 0 ? sv : 0;
+    const ft = fixedTotal({ id: editingId || '_new', start: s, end: e });
+    const free = (b > 0 ? b : 0) - svv - ft;
+    const n = diff(s, e) + 1, q = free / n, days = tn('per.days', n);
+    const pre = svv + ft > 0 ? t('sh.exampleReserved', { r: money(svv + ft), s: money(svv), f: money(ft) }) + '<br>' : '';
+    $('pExample').innerHTML = pre + (b > 0
+      ? (free > 0 ? t('sh.example', { days, q: money(q), q2: money(q * 2) }) : t('sh.exampleNone'))
+      : t('sh.exampleNoBase', { days }));
   }
-  ['pStart', 'pEnd', 'pBase'].forEach((id) => $(id).addEventListener('input', updateExample));
+  ['pStart', 'pEnd', 'pBase', 'pSaveAmt'].forEach((id) => $(id).addEventListener('input', updateExample));
   $('pCancel').addEventListener('click', closeEditor);
   $('sheet').addEventListener('click', (ev) => { if (ev.target === $('sheet') && state.periods.length) closeEditor(); });
   $('pSave').addEventListener('click', () => {
     const s = $('pStart').value, e = $('pEnd').value, b = parseAmt($('pBase').value);
     if (!s || !e || e < s) { $('pError').textContent = t('sh.badDatesErr'); $('pError').hidden = false; return; }
-    const data = { name: $('pName').value.trim(), start: s, end: e, base: b > 0 ? b : 0 };
+    const sv = parseAmt($('pSaveAmt').value);
+    const data = { name: $('pName').value.trim(), start: s, end: e, base: b > 0 ? b : 0, save: sv > 0 ? sv : 0 };
     if (editingId) { Object.assign(state.periods.find((p) => p.id === editingId), data); state.current = editingId; }
     else { const id = uid(); state.periods.push(Object.assign({ id }, data)); state.current = id; state.entries[id] = []; }
     save(); closeEditor();
@@ -645,11 +1011,12 @@
   });
   // Controlla che il file sia davvero un backup di Quota prima di toccare i dati
   const isDay = (x) => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x) && !isNaN(toD(x));
+  const posNum = (x) => typeof x === 'number' && isFinite(x) && x > 0 ? x : 0;
   function readBackup(j) {
     const d = j && j.data;
     if (!d || !Array.isArray(d.periods) || !d.entries || typeof d.entries !== 'object' || Array.isArray(d.entries)) return null;
     const periods = d.periods.filter((p) => p && typeof p.id === 'string' && isDay(p.start) && isDay(p.end) && p.end >= p.start)
-      .map((p) => ({ id: p.id, name: typeof p.name === 'string' ? p.name : '', start: p.start, end: p.end, base: typeof p.base === 'number' && isFinite(p.base) && p.base > 0 ? p.base : 0 }));
+      .map((p) => ({ id: p.id, name: typeof p.name === 'string' ? p.name : '', start: p.start, end: p.end, base: posNum(p.base), save: posNum(p.save) }));
     if (periods.length !== d.periods.length) return null;
     const entries = {};
     for (const p of periods) {
@@ -660,12 +1027,25 @@
       entries[p.id] = ok.map((e) => {
         const x = { id: e.id, date: e.date, amount: e.amount, type: e.type === 'in' ? 'in' : 'out', cat: typeof e.cat === 'string' ? e.cat : '', note: typeof e.note === 'string' ? e.note : '' };
         if (x.type === 'in' && typeof e.spread === 'boolean') x.spread = e.spread;
+        if (x.type === 'out' && e.fromSavings === true) x.fromSavings = true;
         return x;
       });
     }
+    // categorie tue, spese fisse e scadenze pagate (i backup vecchi non le hanno: si parte vuoti)
+    const cin = d.cats && typeof d.cats === 'object' ? d.cats : {};
+    const cleanCats = (l) => (Array.isArray(l) ? l : []).filter((c) => c && typeof c.id === 'string' && typeof c.name === 'string' && c.name.trim())
+      .slice(0, MAX_CATS).map((c) => ({ id: c.id, name: c.name.trim().slice(0, 20) }));
+    const fixed = (Array.isArray(d.fixed) ? d.fixed : []).filter((f) => f && typeof f.id === 'string' && isDay(f.first) && posNum(f.amount) > 0)
+      .map((f) => ({ id: f.id, kind: KINDS.indexOf(f.kind) >= 0 ? f.kind : 'other', name: typeof f.name === 'string' ? f.name.slice(0, 40) : '', amount: posNum(f.amount),
+        first: f.first, repeat: ['month', '2month', 'year', 'once'].indexOf(f.repeat) >= 0 ? f.repeat : 'month', by: f.by === 'weekday' ? 'weekday' : 'day' }));
+    const paid = {};
+    if (d.paid && typeof d.paid === 'object') periods.forEach((p) => {
+      const src = d.paid[p.id]; if (!src || typeof src !== 'object') return;
+      Object.keys(src).forEach((k) => { const h = src[k]; if (h && typeof h.amount === 'number' && isFinite(h.amount) && h.amount >= 0) (paid[p.id] = paid[p.id] || {})[k] = { amount: h.amount, at: isDay(h.at) ? h.at : p.start }; });
+    });
     const st = d.settings && typeof d.settings === 'object' ? d.settings : {};
     return {
-      periods, entries,
+      periods, entries, cats: { out: cleanCats(cin.out), in: cleanCats(cin.in) }, fixed, paid,
       current: periods.some((p) => p.id === d.current) ? d.current : null,
       settings: { overspend: st.overspend === 'ricalcola' ? 'ricalcola' : 'riporto', lang: state.settings.lang, lastBackup: isDay(st.lastBackup) ? st.lastBackup : undefined }
     };
@@ -717,7 +1097,7 @@
     // quando arriva una versione nuova dell'app, ricarica una volta da sola
     // ...ma non mentre stai scrivendo: in quel caso aspetta che chiudi o lasci l'app
     let reloaded = false, pending = false;
-    const busy = () => !$('sheet').hidden || $('inAmt').value !== '' || $('inNote').value !== '' ||
+    const busy = () => !$('sheet').hidden || !$('fsheet').hidden || !$('esheet').hidden || $('inAmt').value !== '' || $('inNote').value !== '' ||
       (document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) ||
       !!document.querySelector('.confirm');
     const reload = () => { if (!reloaded) { reloaded = true; location.reload(); } };

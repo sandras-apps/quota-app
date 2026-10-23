@@ -3,7 +3,7 @@
    non risponde entro 3 secondi (es. una tacca di segnale in un negozio), usa la copia salvata.
    Le richieste verso altri siti (es. il conteggio anonimo di GoatCounter) non vengono toccate né salvate.
    Quando modifichi i file dell'app, aumenta il numero di VERSION. */
-const VERSION = 'quota-v7';
+const VERSION = 'quota-v8';
 const SHELL = [
   './', 'index.html', 'style.css', 'i18n.js', 'app.js', 'manifest.webmanifest',
   'fonts/plus-jakarta-sans.woff2', 'fonts/inter.woff2',
