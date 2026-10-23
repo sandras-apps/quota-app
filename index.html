@@ -108,18 +108,28 @@
       </article>
 
       <article class="card">
-        <div class="card-head"><h2 data-i18n="sav.title">Risparmi</h2><button type="button" class="link" id="savChange" data-i18n="sav.change">Cambia</button></div>
+        <div class="card-head"><h2 data-i18n="sav.title">Risparmi</h2></div>
         <div class="kv num"><span data-i18n="sav.period">In questo periodo</span><b id="savPeriod"></b></div>
         <div class="kv num"><span data-i18n="sav.pot">Totale nei risparmi</span><b id="savPot"></b></div>
-        <p class="hint" id="savNote"></p>
-        <button type="button" class="btn wide btn-sav" id="savUse">
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 8v4M12 15.5v.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          <span data-i18n="sav.use">Usa per un imprevisto</span>
-        </button>
         <div id="savHistory" hidden>
           <p class="sav-count num" id="savCount"></p>
           <ul class="list" id="savList"></ul>
         </div>
+        <button type="button" class="btn wide" id="savAdd">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          <span data-i18n="sav.add">Aggiungi ai risparmi</span>
+        </button>
+        <div class="sav-row">
+          <button type="button" class="btn btn-sav" id="savBack">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+            <span data-i18n="sav.take">Togli</span>
+          </button>
+          <button type="button" class="btn btn-sav" id="savUse">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 8v4M12 15.5v.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <span data-i18n="sav.useShort">Imprevisto</span>
+          </button>
+        </div>
+        <p class="hint" id="savNote"></p>
       </article>
 
       <article class="card">
@@ -182,7 +192,8 @@
 
     <!-- ================= PERIODI ================= -->
     <section class="view" data-view="periods" hidden>
-      <header class="top"><h1 data-i18n="per.title">Periodi</h1></header>
+      <header class="top"><h1 data-i18n="per.title">Impostazioni</h1></header>
+      <h2 class="sec" data-i18n="per.list">Periodi</h2>
       <div id="periodList" class="plist"></div>
       <button class="btn accent wide" id="btnNewPeriod" type="button">
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
@@ -314,24 +325,24 @@
     <!-- ================= IMPREVISTO DAI RISPARMI ================= -->
     <div class="sheet-wrap" id="esheet" hidden>
       <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="eTitle">
-        <h2 id="eTitle" data-i18n="em.title">Usa i risparmi</h2>
+        <h2 id="eTitle">Usa i risparmi</h2>
         <div id="eStep1">
-          <p class="hint" data-i18n="em.desc">Solo per un imprevisto: la spesa viene presa dai risparmi, non dalla quota. La quota di oggi resta uguale.</p>
+          <p class="hint" id="eDesc"></p>
           <div class="field"><label for="eAmt" data-i18n="em.amount">Importo (€)</label><input id="eAmt" class="num" inputmode="decimal" placeholder="0,00"></div>
-          <div class="field"><label for="eNote" data-i18n="em.note">Che cosa è successo?</label><input id="eNote" maxlength="60" autocomplete="off" placeholder="Es. Veterinario" data-i18n-ph="em.notePh"></div>
+          <div class="field"><label for="eNote" id="eNoteLabel">Che cosa è successo?</label><input id="eNote" maxlength="60" autocomplete="off" placeholder="Es. Veterinario"></div>
           <p class="error" id="eError" hidden></p>
           <div class="row">
-            <button class="btn accent" id="eNext" type="button" data-i18n="em.next">Continua</button>
+            <button class="btn accent" id="eNext" type="button">Continua</button>
             <button class="btn" id="eCancel" type="button" data-i18n="sh.cancel">Annulla</button>
           </div>
         </div>
         <div id="eStep2" hidden>
           <div class="em-sure">
-            <b data-i18n="em.sure">Vuoi davvero usarli? Questi erano i tuoi risparmi.</b>
+            <b id="eSure"></b>
             <span id="eSureSub" class="num"></span>
           </div>
           <div class="row">
-            <button class="btn btn-sav-solid" id="eYes" type="button" data-i18n="em.yes">Sì, usa i risparmi</button>
+            <button class="btn btn-sav-solid" id="eYes" type="button">Sì, usa i risparmi</button>
             <button class="btn" id="eBack" type="button" data-i18n="em.back">Indietro</button>
           </div>
         </div>
@@ -357,8 +368,8 @@
         <span data-i18n="nav.calendar">Calendario</span>
       </button>
       <button data-nav="periods">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5 6v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V6M5 12v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6v-6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
-        <span data-i18n="nav.periods">Periodi</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="12" r="6.6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+        <span data-i18n="nav.periods">Impostazioni</span>
       </button>
     </nav>
 

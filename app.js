@@ -104,14 +104,15 @@
       { id: 'altro-in', name: 'Altro', icon: 'dots' }
     ]
   };
-  // categorie tue (in Periodi → Categorie, o col "+" accanto ad Altro): vanno prima di "Altro"
+  // categorie tue (in Impostazioni → Categorie, o col "+" accanto ad Altro): vanno prima di "Altro"
   const MAX_CATS = 8;
   const myCats = (ty) => ((state.cats && state.cats[ty]) || []).map((c) => ({ id: c.id, name: c.name, icon: 'tag', custom: true }));
   const cats = (ty) => { const base = CATS[ty]; return base.slice(0, -1).concat(myCats(ty), base.slice(-1)); };
   const catName = (c) => c.custom ? c.name : t('cat.' + c.id);
   // spese prese dai risparmi (imprevisti): non toccano la quota
   const SAV = { id: 'imprevisto', icon: 'shield' };
-  const catOf = (e) => { if (e.fromSavings) return SAV; const l = cats(e.type === 'in' ? 'in' : 'out'); return l.find((c) => c.id === e.cat) || l[l.length - 1]; };
+  const JAR = { id: 'risparmi', icon: 'jar' };
+  const catOf = (e) => { if (e.fromSavings) return SAV; if (e.sav) return JAR; const l = cats(e.type === 'in' ? 'in' : 'out'); return l.find((c) => c.id === e.cat) || l[l.length - 1]; };
   function addCat(ty, raw) {
     const name = String(raw || '').trim().replace(/\s+/g, ' ').slice(0, 20);
     if (!name) return null;
@@ -167,7 +168,7 @@
      che vanno dal suo arrivo alla fine del periodo.
      Disponibile all'inizio di un giorno = maturato fino a quel giorno compreso − spese dei giorni prima.
 
-     Se spendi più della quota (Periodi → impostazione):
+     Se spendi più della quota (Impostazioni):
      - "Recupera" (riporto): la quota resta fissa; risparmi e sforamenti passano ai giorni dopo.
      - "Ricalcola": ogni giorno i soldi rimasti vengono divisi per i giorni che mancano alla fine. */
   // Un'entrata può contare "tutto subito" (es. un rimborso: si aggiunge alla quota di quel giorno)
@@ -179,7 +180,12 @@
      I risparmi del periodo e le spese fisse (affitto, bollette, abbonamenti) che scadono nel periodo
      vengono tolti subito dai soldi del periodo: la quota giornaliera è già calcolata senza di loro.
      Le spese prese dai risparmi (imprevisti) non contano nella quota. */
-  const counts = (e) => e.type !== 'in' && !e.fromSavings;
+  // movimenti dei risparmi: sav 'add' (messi da parte, escono dal periodo), sav 'back' (tolti, tornano
+  // nel periodo divisi sui giorni che restano), fromSavings (imprevisto pagato con i risparmi)
+  const isSavMove = (e) => !!(e.fromSavings || e.sav === 'add' || e.sav === 'back');
+  const isDeposit = (e) => e.sav === 'add';
+  const counts = (e) => e.type !== 'in' && !isSavMove(e);
+  const deposits = (day) => list().reduce((a, e) => a + (isDeposit(e) && (!day || e.date <= day) ? e.amount : 0), 0);
   const dim = (y, m) => new Date(y, m + 1, 0).getDate();
   // n-esimo giorno della settimana del mese (pos 1–4, -1 = l'ultimo)
   function nthWeekday(y, m, wd, pos) {
@@ -223,13 +229,18 @@
   // risparmi accumulati con Quota: messi da parte nei periodi già iniziati − imprevisti pagati
   function savingsPot() {
     const inn = state.periods.reduce((a, p) => a + (p.start <= today ? (p.save || 0) : 0), 0);
-    const used = Object.values(state.entries).reduce((a, l) => a + (l || []).reduce((b, e) => b + (e.fromSavings ? e.amount : 0), 0), 0);
-    return Math.round((inn - used) * 100) / 100;
+    const moved = Object.values(state.entries).reduce((a, l) => a + (l || []).reduce((b, e) =>
+      b + (isDeposit(e) ? e.amount : (e.fromSavings || e.sav === 'back') ? -e.amount : 0), 0), 0);
+    return Math.round((inn + moved) * 100) / 100;
   }
 
   function sources(p) {
     const s = [{ date: p.start, amount: (p.base || 0) - reserved(p) }];
-    list().forEach((e) => { if (e.type === 'in') s.push({ date: e.date < p.start ? p.start : e.date, amount: e.amount, once: isOneOff(e) }); });
+    list().forEach((e) => {
+      if (e.type === 'in') s.push({ date: e.date < p.start ? p.start : e.date, amount: e.amount, once: isOneOff(e) });
+      // messi nei risparmi: escono tutti dal giorno in cui li sposti
+      else if (isDeposit(e)) s.push({ date: e.date < p.start ? p.start : e.date, amount: -e.amount, once: true });
+    });
     return s;
   }
   function accrued(p, day) {
@@ -247,7 +258,7 @@
   const outBefore = (day) => list().reduce((a, e) => a + (counts(e) && e.date < day ? e.amount : 0), 0);
   const availableAt = (p, day) => accrued(p, day) - outBefore(day);
   const mode = () => state.settings.overspend === 'ricalcola' ? 'ricalcola' : 'riporto';
-  const knownMoney = (p, day) => (p.base || 0) - reserved(p) + list().reduce((a, e) => a + (e.type === 'in' && e.date <= day ? e.amount : 0), 0);
+  const knownMoney = (p, day) => (p.base || 0) - reserved(p) - deposits(day) + list().reduce((a, e) => a + (e.type === 'in' && e.date <= day ? e.amount : 0), 0);
   function dayInfo(p, day) {
     const q0 = quotaOn(p, day);
     if (mode() === 'ricalcola') {
@@ -288,7 +299,7 @@
     return dayInfo(p, d).avail - s < -0.005 ? 'bad' : 'ok';
   }
   const totals = (p) => {
-    const tin = (p.base || 0) - reserved(p) + list().reduce((a, e) => a + (e.type === 'in' ? e.amount : 0), 0);
+    const tin = (p.base || 0) - reserved(p) - deposits() + list().reduce((a, e) => a + (e.type === 'in' ? e.amount : 0), 0);
     const tout = list().reduce((a, e) => a + (counts(e) ? e.amount : 0), 0);
     return { tin, tout, left: tin - tout };
   };
@@ -451,6 +462,14 @@
 
   function itemHTML(e) {
     const c = catOf(e);
+    if (e.sav === 'add' || e.sav === 'back') {
+      const add = e.sav === 'add';
+      return '<li class="item sav" data-id="' + e.id + '">' +
+        '<span class="ico">' + svg('jar') + '</span>' +
+        '<span class="txt"><b>' + esc(e.note || t(add ? 'sav.added' : 'sav.back')) + '</b><span class="sav-tag">' + esc(t(add ? 'sav.addedTag' : 'sav.backTag')) + '</span></span>' +
+        '<span class="amt-v num">' + (add ? '→ ' : '+') + money(e.amount) + '</span>' +
+        '<button type="button" class="del" aria-label="' + t('item.delete') + '">×</button></li>';
+    }
     if (e.fromSavings) {
       return '<li class="item sav" data-id="' + e.id + '">' +
         '<span class="ico">' + svg(c.icon) + '</span>' +
@@ -565,14 +584,15 @@
     const items = list().filter((e) => filter === 'all' || (filter === 'in' ? e.type === 'in' : e.type !== 'in'));
     const groups = {};
     items.forEach((e) => {
-      const c = catOf(e), k = (e.fromSavings ? 'sav:' : e.type === 'in' ? 'in:' : 'out:') + c.id;
-      groups[k] = groups[k] || { c, in: e.type === 'in', sav: !!e.fromSavings, v: 0 };
+      const sk = e.fromSavings ? 'use' : e.sav || '';
+      const c = catOf(e), k = (sk ? 'sav:' + sk + ':' : e.type === 'in' ? 'in:' : 'out:') + c.id;
+      groups[k] = groups[k] || { c, in: e.type === 'in', sav: sk, v: 0 };
       groups[k].v += e.amount;
     });
-    const arr = Object.values(groups).sort((a, b) => (a.sav - b.sav) || (b.v - a.v));
+    const arr = Object.values(groups).sort((a, b) => (!!a.sav - !!b.sav) || (b.v - a.v));
     const max = arr.reduce((m, g) => Math.max(m, g.v), 0);
     $('catTotals').innerHTML = arr.length ? arr.map((g) =>
-      '<div class="ct' + (g.in ? ' in' : '') + (g.sav ? ' sav' : '') + '"><span class="ico">' + svg(g.c.icon) + '</span><span class="n">' + esc(g.sav ? t('sav.groupName') : catName(g.c)) + '</span><span class="v num">' + money(g.v) + '</span>' +
+      '<div class="ct' + (g.in ? ' in' : '') + (g.sav ? ' sav' : '') + '"><span class="ico">' + svg(g.c.icon) + '</span><span class="n">' + esc(g.sav ? t({ use: 'sav.groupName', add: 'sav.groupAdd', back: 'sav.groupBack' }[g.sav]) : catName(g.c)) + '</span><span class="v num">' + money(g.v) + '</span>' +
       '<div class="bar"><span style="width:' + (g.v / max * 100) + '%"></span></div></div>'
     ).join('') : '<p class="empty">' + t('moves.empty') + '</p>';
 
@@ -580,7 +600,7 @@
     items.forEach((e) => { (byDay[e.date] = byDay[e.date] || []).push(e); });
     $('movesList').innerHTML = Object.keys(byDay).sort().reverse().map((d) => {
       // gli imprevisti presi dai risparmi non contano nel saldo del giorno
-      const net = byDay[d].reduce((a, e) => a + (e.fromSavings ? 0 : e.type === 'in' ? e.amount : -e.amount), 0);
+      const net = byDay[d].reduce((a, e) => a + (isSavMove(e) ? 0 : e.type === 'in' ? e.amount : -e.amount), 0);
       return '<div class="group"><h3><span>' + (d === today ? t('cal.today') : long(d)) + '</span><span class="num">' + (net >= 0 ? '+' : '−') + money(Math.abs(net)) + '</span></h3>' +
         '<div class="card"><ul class="list">' + byDay[d].map(itemHTML).join('') + '</ul></div></div>';
     }).join('');
@@ -602,18 +622,25 @@
   }
   function renderSet() {
     const p = cur(); if (!p) return;
-    const ft = fixedTotal(p), sv = p.save || 0, pot = savingsPot();
+    // risparmi del periodo: quelli impostati all'inizio + aggiunti − tolti (gli imprevisti si vedono a parte)
+    const net = list().reduce((x, e) => x + (isDeposit(e) ? e.amount : e.sav === 'back' ? -e.amount : 0), 0);
+    const ft = fixedTotal(p), sv = Math.max(0, (p.save || 0) + net), pot = savingsPot();
     $('setTotal').textContent = money(sv + ft);
     $('setSplit').textContent = t('set.split', { a: money(sv), b: money(ft) });
     $('savPeriod').textContent = money(sv);
     $('savPot').textContent = money(Math.max(0, pot));
+    const live = inPeriod(p, today);
+    $('savAdd').disabled = !live;
+    $('savBack').disabled = pot <= 0 || !live;
     $('savUse').disabled = pot <= 0;
     $('savNote').textContent = pot > 0 ? t('sav.useHint') : t('sav.empty');
-    const used = list().filter((e) => e.fromSavings).sort((a, b) => b.date.localeCompare(a.date));
-    $('savHistory').hidden = !used.length;
-    if (used.length) {
-      $('savCount').textContent = tn('sav.used', used.length, { amt: money(used.reduce((a, e) => a + e.amount, 0)) });
-      $('savList').innerHTML = used.map((e) => itemHTML(e).replace('<span class="sav-tag">' + esc(t('sav.tag')) + '</span>', '<span class="sav-tag">' + esc(long(e.date)) + '</span>')).join('');
+    const moves = list().filter(isSavMove).sort((a, b) => b.date.localeCompare(a.date));
+    $('savHistory').hidden = !moves.length;
+    if (moves.length) {
+      const used = moves.filter((e) => e.fromSavings);
+      $('savCount').textContent = used.length ? tn('sav.used', used.length, { amt: money(used.reduce((a, e) => a + e.amount, 0)) }) : t('sav.history');
+      // nella lista dei risparmi, al posto dell'etichetta mostra il giorno
+      $('savList').innerHTML = moves.map((e) => itemHTML(e).replace(/<span class="sav-tag">[^<]*<\/span>/, '<span class="sav-tag">' + esc(cap(long(e.date))) + '</span>')).join('');
     }
     const ds = dues(p);
     const fx = state.fixed.slice().sort((a, b) => b.amount - a.amount);
@@ -633,7 +660,6 @@
   $('fxList').addEventListener('click', (ev) => { const li = ev.target.closest('[data-fx]'); if (li) openFixed(state.fixed.find((f) => f.id === li.dataset.fx)); });
   $('fxList').addEventListener('keydown', (ev) => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches('[data-fx]')) { ev.preventDefault(); ev.target.click(); } });
   $('fxAdd').addEventListener('click', () => openFixed(null));
-  $('savChange').addEventListener('click', () => { openEditor(cur()); setTimeout(() => $('pSaveAmt').focus(), 50); });
   $('savList').addEventListener('click', onListClick);
 
   /* ---------------- scheda spesa fissa ---------------- */
@@ -703,41 +729,85 @@
     toast(t('fx.saved'));
   });
 
-  /* ---------------- imprevisto: spesa presa dai risparmi ---------------- */
-  let emDraft = null;
-  function openEmergency() {
-    emDraft = null;
+  /* ---------------- risparmi: aggiungi, togli, imprevisto ----------------
+     add  → soldi che ti avanzano: escono subito dal periodo ed entrano nei risparmi
+     back → tolti dai risparmi: tornano nel periodo, divisi sui giorni che restano (non tutti oggi)
+     use  → imprevisto: paga una spesa precisa, la quota non cambia
+     "back" e "use" chiedono conferma: i risparmi non devono diventare una scorciatoia. */
+  let emMode = 'use', emDraft = null;
+  const EM = {
+    add: { title: 'em.addTitle', desc: 'em.addDesc', note: 'em.noteOpt', ph: 'em.addPh' },
+    back: { title: 'em.backTitle', desc: 'em.backDesc', note: 'em.noteOpt', ph: 'em.backPh' },
+    use: { title: 'em.title', desc: 'em.desc', note: 'em.note', ph: 'em.notePh' }
+  };
+  function openSavings(m) {
+    emMode = m; emDraft = null;
+    const c = EM[m];
+    $('eTitle').textContent = t(c.title);
+    $('eDesc').textContent = t(c.desc);
+    $('eNoteLabel').textContent = t(c.note);
+    $('eNote').placeholder = t(c.ph);
+    $('eNext').textContent = m === 'add' ? t('em.addBtn') : t('em.next');
+    $('eNext').className = 'btn ' + (m === 'add' ? 'accent' : 'btn-sav-solid');
     $('eAmt').value = ''; $('eNote').value = ''; $('eError').hidden = true;
     $('eStep1').hidden = false; $('eStep2').hidden = true;
     openSheet('esheet');
     setTimeout(() => $('eAmt').focus(), 50);
   }
-  $('savUse').addEventListener('click', openEmergency);
+  $('savAdd').addEventListener('click', () => openSavings('add'));
+  $('savBack').addEventListener('click', () => openSavings('back'));
+  $('savUse').addEventListener('click', () => openSavings('use'));
   $('eCancel').addEventListener('click', () => closeSheet('esheet'));
   $('esheet').addEventListener('click', (ev) => { if (ev.target === $('esheet')) closeSheet('esheet'); });
-  $('eNext').addEventListener('click', () => {
-    const err = (s) => { $('eError').textContent = s; $('eError').hidden = false; };
-    const v = parseAmt($('eAmt').value), note = $('eNote').value.trim(), pot = savingsPot();
-    if (!(v > 0)) { err(t('em.badAmt')); $('eAmt').focus(); return; }
-    if (v > pot + 0.004) { err(t('em.tooMuch', { amt: money(Math.max(0, pot)) })); $('eAmt').focus(); return; }
-    if (!note) { err(t('em.badNote')); $('eNote').focus(); return; }
-    emDraft = { amount: v, note };
-    $('eSureSub').textContent = t('em.sureSub', { amt: money(v), note, left: money(pot - v) });
-    $('eStep1').hidden = true; $('eStep2').hidden = false;
-  });
-  $('eBack').addEventListener('click', () => { $('eStep1').hidden = false; $('eStep2').hidden = true; });
-  $('eYes').addEventListener('click', () => {
-    if (!emDraft || !cur()) return;
-    list().push({ id: uid(), date: today, amount: emDraft.amount, type: 'out', cat: 'imprevisto', note: emDraft.note, fromSavings: true });
+  function saveSavings() {
+    const p = cur(); if (!p || !emDraft) return;
+    const d = emDraft, base = { id: uid(), date: today, amount: d.amount, note: d.note };
+    if (emMode === 'add') list().push(Object.assign(base, { type: 'out', cat: 'risparmi', sav: 'add' }));
+    else if (emMode === 'back') list().push(Object.assign(base, { type: 'in', cat: 'risparmi', sav: 'back', spread: true }));
+    else list().push(Object.assign(base, { type: 'out', cat: 'imprevisto', fromSavings: true }));
     emDraft = null;
     save(); closeSheet('esheet'); renderAll();
-    toast(t('em.done'));
+    toast(t({ add: 'em.addDone', back: 'em.backDone', use: 'em.done' }[emMode]));
+  }
+  $('eNext').addEventListener('click', () => {
+    const err = (s) => { $('eError').textContent = s; $('eError').hidden = false; };
+    const p = cur(); if (!p) return;
+    const v = parseAmt($('eAmt').value), note = $('eNote').value.trim(), pot = savingsPot();
+    if (!(v > 0)) { err(t('em.badAmt')); $('eAmt').focus(); return; }
+    if (emMode === 'add') {
+      // con "Recupera" i soldi escono tutti oggi: puoi spostare al massimo quello che oggi ti resta.
+      // con "Ricalcola" vengono tolti da quello che resta del periodo.
+      const recalc = mode() === 'ricalcola';
+      const left = Math.round((recalc ? totals(p).left : dayInfo(p, today).avail - outOn(today)) * 100) / 100;
+      if (v > left + 0.004) { err(left > 0 ? t(recalc ? 'em.addTooMuch' : 'em.addTooMuchToday', { amt: money(left) }) : t('em.addNone')); $('eAmt').focus(); return; }
+      emDraft = { amount: v, note };
+      saveSavings();
+      return;
+    }
+    if (v > pot + 0.004) { err(t('em.tooMuch', { amt: money(Math.max(0, pot)) })); $('eAmt').focus(); return; }
+    if (emMode === 'use' && !note) { err(t('em.badNote')); $('eNote').focus(); return; }
+    emDraft = { amount: v, note };
+    if (emMode === 'back') {
+      const n = diff(today, p.end) + 1;
+      $('eSure').textContent = t('em.backSure');
+      $('eSureSub').textContent = t('em.backSureSub', { amt: money(v), n: tn('per.days', n), day: money(v / n), left: money(pot - v) });
+      $('eYes').textContent = t('em.backYes');
+    } else {
+      $('eSure').textContent = t('em.sure');
+      $('eSureSub').textContent = t('em.sureSub', { amt: money(v), note, left: money(pot - v) });
+      $('eYes').textContent = t('em.yes');
+    }
+    $('eStep1').hidden = true; $('eStep2').hidden = false;
   });
+  $('eAmt').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); $('eNote').focus(); } });
+  $('eNote').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); $('eNext').click(); } });
+  $('eBack').addEventListener('click', () => { $('eStep1').hidden = false; $('eStep2').hidden = true; });
+  $('eYes').addEventListener('click', saveSavings);
 
   function openSheet(id) { $(id).hidden = false; document.body.style.overflow = 'hidden'; }
   function closeSheet(id) { $(id).hidden = true; if ($('sheet').hidden && $('fsheet').hidden && $('esheet').hidden) document.body.style.overflow = ''; }
 
-  /* ---------------- categorie (in Periodi) ---------------- */
+  /* ---------------- categorie (in Impostazioni) ---------------- */
   let catsType = 'out';
   function renderMyCats() {
     $('catsDesc').textContent = t('cats.desc', { n: MAX_CATS });
@@ -1028,6 +1098,7 @@
         const x = { id: e.id, date: e.date, amount: e.amount, type: e.type === 'in' ? 'in' : 'out', cat: typeof e.cat === 'string' ? e.cat : '', note: typeof e.note === 'string' ? e.note : '' };
         if (x.type === 'in' && typeof e.spread === 'boolean') x.spread = e.spread;
         if (x.type === 'out' && e.fromSavings === true) x.fromSavings = true;
+        else if ((e.sav === 'add' && x.type === 'out') || (e.sav === 'back' && x.type === 'in')) x.sav = e.sav;
         return x;
       });
     }

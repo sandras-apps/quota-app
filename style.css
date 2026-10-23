@@ -293,10 +293,11 @@ label.link { cursor: pointer; }
   background: var(--surface); border-top: 1px solid var(--line);
   padding: 6px max(8px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
 }
-.nav button { flex: 1; min-width: 0; max-width: 120px; border: 0; background: none; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; font-size: 12px; font-weight: 600; }
+.nav button { flex: 1; min-width: 0; max-width: 120px; letter-spacing: -.01em; border: 0; background: none; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; font-size: 12px; font-weight: 600; }
 .nav svg { width: 24px; height: 24px; }
 .nav span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-@media (max-width: 370px) { .nav button { font-size: 11px; } }
+@media (max-width: 430px) { .nav button { font-size: 11px; } }
+@media (max-width: 350px) { .nav button { font-size: 10px; } }
 .nav button[aria-current="page"] { color: var(--accent); }
 
 .toast {
@@ -344,7 +345,9 @@ label.link { cursor: pointer; }
 .kv span { color: var(--muted); }
 .kv b { font-family: var(--display); font-weight: 700; }
 .btn-sav { color: #4C5FA8; border-color: #D9DEF2; }
-.btn-sav:disabled { opacity: .45; cursor: default; }
+.btn-sav:disabled, #savAdd:disabled { opacity: .45; cursor: default; }
+.sav-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sec { font-family: var(--display); font-size: 17px; font-weight: 700; margin: 2px 0 -4px; }
 .btn-sav-solid { background: #5B6FB8; color: #fff; border-color: transparent; }
 .sav-count { margin: 4px 0 0; font-size: 13px; font-weight: 600; color: var(--muted); }
 .fx-st { display: inline-flex; align-items: center; gap: 4px; margin-top: 3px; font-size: 13px; font-weight: 600; color: var(--accent-ink); }
