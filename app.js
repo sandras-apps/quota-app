@@ -244,6 +244,18 @@
   const STEP = { month: 1, '2month': 2, year: 12 };
   // date in cui scade una spesa fissa tra from e to (comprese)
   function occurrences(f, from, to) {
+    if (f.repeat === 'custom') {
+      // ogni N giorni / settimane / mesi a partire da first
+      const n = Math.max(1, Math.round(f.every || 1)), u = f.unit, out = [], F = toD(f.first);
+      for (let k = 0; k < 2000; k++) {
+        let d;
+        if (u === 'month') { const mi = F.getMonth() + k * n, y = F.getFullYear() + Math.floor(mi / 12), m = ((mi % 12) + 12) % 12; d = ymd(new Date(y, m, Math.min(F.getDate(), dim(y, m)))); }
+        else d = addDays(f.first, k * n * (u === 'week' ? 7 : 1));
+        if (d > to) break;
+        if (d >= from) out.push(d);
+      }
+      return out;
+    }
     if (f.repeat === 'once' || !STEP[f.repeat]) return f.first >= from && f.first <= to ? [f.first] : [];
     const step = STEP[f.repeat], F = toD(f.first), out = [];
     const byWd = f.by === 'weekday' && f.repeat !== 'year';
@@ -251,7 +263,8 @@
     const startK = Math.max(0, Math.floor(((toD(from).getFullYear() - F.getFullYear()) * 12 + toD(from).getMonth() - F.getMonth()) / step) - 1);
     for (let k = startK; k < startK + 400; k++) {
       const mi = F.getMonth() + k * step, y = F.getFullYear() + Math.floor(mi / 12), m = ((mi % 12) + 12) % 12;
-      const d = byWd ? ymd(nthWeekday(y, m, F.getDay(), pos)) : ymd(new Date(y, m, Math.min(F.getDate(), dim(y, m))));
+      const dayN = f.dom || F.getDate();
+      const d = byWd ? ymd(nthWeekday(y, m, F.getDay(), pos)) : ymd(new Date(y, m, Math.min(dayN, dim(y, m))));
       if (d > to) break;
       if (d >= from && d >= f.first) out.push(d);
     }
@@ -691,10 +704,21 @@
     // in italiano "domenica" è femminile: "la prima domenica"
     return t('fx.pos' + POS_KEYS[posOf(first)] + (wd === 0 ? '_f' : ''), { wd: name });
   }
+  const everyText = (n, u) => (n || 1) === 1 ? t('fx.every1.' + u) : t('fx.everyN', { n, u: t('fx.u.' + u) });
+  // prossima data con quel giorno del mese, da oggi in poi
+  function nextDom(dom) {
+    const d = toD(today);
+    for (let k = 0; k < 3; k++) {
+      const y = d.getFullYear(), m = d.getMonth() + k, x = ymd(new Date(y, m, Math.min(dom, dim(new Date(y, m, 1).getFullYear(), new Date(y, m, 1).getMonth()))));
+      if (x >= today) return x;
+    }
+    return today;
+  }
   function ruleText(f) {
     if (f.repeat === 'once') return t('fx.ruleOnce', { date: short(f.first) });
     if (f.repeat === 'year') return t('fx.ruleYear', { date: short(f.first) });
-    const when = f.by === 'weekday' ? wdText(f.first) : t('fx.whenDay', { d: toD(f.first).getDate() });
+    if (f.repeat === 'custom') return t('fx.ruleCustom', { every: everyText(f.every, f.unit), date: short(f.first) });
+    const when = f.by === 'weekday' ? wdText(f.first) : t('fx.whenDay', { d: f.dom || toD(f.first).getDate() });
     return t(f.repeat === '2month' ? 'fx.rule2Month' : 'fx.ruleMonth', { when });
   }
   function renderSet() {
@@ -743,15 +767,20 @@
   const KINDS = ['rent', 'bill', 'sub', 'other'];
   let fx = null; // bozza in modifica
   function openFixed(f) {
-    fx = f ? Object.assign({}, f) : { id: null, kind: 'rent', name: '', amount: 0, first: '', repeat: 'month', by: 'day' };
-    if (!f) {
-      // proposta: il primo giorno del mese prossimo
-      const d = toD(today); fx.first = ymd(new Date(d.getFullYear(), d.getMonth() + 1, 1));
-    }
+    fx = f ? Object.assign({}, f) : { id: null, kind: 'rent', name: '', amount: 0, first: '', repeat: 'month', dom: 1, every: 2, unit: 'week' };
+    // le spese salvate con "ogni 2 mesi" diventano "Altro: ogni 2 mesi"
+    if (fx.repeat === '2month') { fx.repeat = 'custom'; fx.every = 2; fx.unit = 'month'; }
+    if (fx.repeat === 'month' && !fx.dom) fx.dom = toD(fx.first).getDate();
+    if (!fx.every) fx.every = 2;
+    if (!fx.unit) fx.unit = 'week';
+    if (!f) fx.first = today;
+    fx.origDom = fx.dom;
     $('fTitle').textContent = f ? t('fx.editTitle') : t('fx.newTitle');
     $('fName').value = fx.name;
     $('fAmt').value = fx.amount ? String(fx.amount).replace('.', ',') : '';
     $('fFirst').value = fx.first;
+    $('fDom').value = fx.dom || '';
+    $('fEvery').value = fx.every;
     $('fError').hidden = true;
     const z = $('fDelZone');
     z.innerHTML = f ? '<button type="button" class="btn" id="fDel">' + esc(t('fx.delete')) + '</button>' : '';
@@ -770,15 +799,39 @@
       '<button type="button" class="cat" role="radio" aria-checked="' + (fx.kind === k) + '" data-kind="' + k + '">' + svg(KIND_ICON[k]) + esc(t('fx.k.' + k)) + '</button>').join('');
     $('fName').placeholder = t('fx.k.' + fx.kind + 'Ph');
     $$('#fRepeat [data-repeat]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.repeat === fx.repeat)));
-    const first = $('fFirst').value;
-    const showBy = (fx.repeat === 'month' || fx.repeat === '2month') && !!first;
-    $('fByWrap').hidden = !showBy;
-    if (showBy) {
-      const b = $$('#fBy [data-by]');
-      b[0].textContent = t('fx.byDay', { d: toD(first).getDate() });
-      b[1].textContent = t('fx.byWd', { when: wdText(first) });
-      b.forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.by === (fx.by || 'day'))));
+    $$('#fUnit [data-unit]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.unit === fx.unit)));
+    const r = fx.repeat;
+    $('fDomWrap').hidden = r !== 'month';
+    $('fEveryWrap').hidden = r !== 'custom';
+    $('fDateWrap').hidden = r === 'month';
+    $('fDateLabel').textContent = r === 'custom' ? t('fx.from') : t('fx.date');
+    // anteprima delle prossime scadenze
+    const draft = draftFixed();
+    let next = [];
+    if (draft) next = occurrences(draft, today, addDays(today, 800)).slice(0, r === 'once' ? 1 : 3);
+    let txt = next.length ? t(next.length === 1 ? 'fx.next1' : 'fx.next', { list: next.map(short).join(' · ') }) : '';
+    if (r === 'month' && draft && draft.dom > 28) txt += (txt ? ' ' : '') + t('fx.domShort');
+    $('fNext').textContent = txt;
+    $('fNext').hidden = !txt;
+  }
+  // la spesa fissa come verrebbe salvata (null se mancano dati)
+  function draftFixed() {
+    const r = fx.repeat;
+    if (r === 'month') {
+      const dom = Math.round(Number($('fDom').value));
+      if (!(dom >= 1 && dom <= 31)) return null;
+      // se il giorno non cambia, tieni la data di partenza (così le scadenze già passate restano)
+      const first = fx.id && fx.first && dom === fx.origDom ? fx.first : nextDom(dom);
+      return { repeat: 'month', dom, first, by: 'day' };
     }
+    const first = $('fFirst').value;
+    if (!isDay(first)) return null;
+    if (r === 'custom') {
+      const n = Math.round(Number($('fEvery').value));
+      if (!(n >= 1 && n <= 365)) return null;
+      return { repeat: 'custom', every: n, unit: fx.unit, first };
+    }
+    return { repeat: r, first };
   }
   $('fKinds').addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-kind]'); if (!b) return;
@@ -789,18 +842,28 @@
     renderFixedForm();
   });
   $('fRepeat').addEventListener('click', (ev) => { const b = ev.target.closest('[data-repeat]'); if (b) { fx.repeat = b.dataset.repeat; renderFixedForm(); } });
-  $('fBy').addEventListener('click', (ev) => { const b = ev.target.closest('[data-by]'); if (b) { fx.by = b.dataset.by; renderFixedForm(); } });
-  $('fFirst').addEventListener('input', renderFixedForm);
+  $('fUnit').addEventListener('click', (ev) => { const b = ev.target.closest('[data-unit]'); if (b) { fx.unit = b.dataset.unit; renderFixedForm(); } });
+  ['fFirst', 'fDom', 'fEvery'].forEach((id) => $(id).addEventListener('input', renderFixedForm));
   $('fCancel').addEventListener('click', () => closeSheet('fsheet'));
   $('fsheet').addEventListener('click', (ev) => { if (ev.target === $('fsheet')) closeSheet('fsheet'); });
   $('fSave').addEventListener('click', () => {
     const err = (k) => { $('fError').textContent = t(k); $('fError').hidden = false; };
     const name = $('fName').value.trim() || t('fx.k.' + fx.kind + 'Ph');
-    const amount = parseAmt($('fAmt').value), first = $('fFirst').value;
+    const amount = parseAmt($('fAmt').value);
     if (!(amount > 0)) { err('fx.badAmt'); $('fAmt').focus(); return; }
-    if (!isDay(first)) { err('fx.badDate'); return; }
-    const data = { kind: fx.kind, name: name.slice(0, 40), amount, first, repeat: fx.repeat, by: fx.by === 'weekday' ? 'weekday' : 'day' };
-    if (fx.id) Object.assign(state.fixed.find((x) => x.id === fx.id), data);
+    const draft = draftFixed();
+    if (!draft) {
+      if (fx.repeat === 'month') { err('fx.badDom'); $('fDom').focus(); }
+      else if (fx.repeat === 'custom' && !(Math.round(Number($('fEvery').value)) >= 1)) { err('fx.badEvery'); $('fEvery').focus(); }
+      else err('fx.badDate');
+      return;
+    }
+    const data = Object.assign({ kind: fx.kind, name: name.slice(0, 40), amount }, draft);
+    if (fx.id) {
+      const old = state.fixed.find((x) => x.id === fx.id);
+      ['dom', 'every', 'unit', 'by'].forEach((k) => delete old[k]);
+      Object.assign(old, data);
+    }
     else state.fixed.push(Object.assign({ id: 'f_' + uid() }, data));
     save(); closeSheet('fsheet'); renderAll();
     toast(t('fx.saved'));
@@ -1221,7 +1284,10 @@
       .slice(0, MAX_CATS).map((c) => ({ id: c.id, name: c.name.trim().slice(0, 20) }));
     const fixed = (Array.isArray(d.fixed) ? d.fixed : []).filter((f) => f && typeof f.id === 'string' && isDay(f.first) && posNum(f.amount) > 0)
       .map((f) => ({ id: f.id, kind: KINDS.indexOf(f.kind) >= 0 ? f.kind : 'other', name: typeof f.name === 'string' ? f.name.slice(0, 40) : '', amount: posNum(f.amount),
-        first: f.first, repeat: ['month', '2month', 'year', 'once'].indexOf(f.repeat) >= 0 ? f.repeat : 'month', by: f.by === 'weekday' ? 'weekday' : 'day' }));
+        first: f.first, repeat: ['month', '2month', 'year', 'once', 'custom'].indexOf(f.repeat) >= 0 ? f.repeat : 'month', by: f.by === 'weekday' ? 'weekday' : 'day',
+        dom: f.dom >= 1 && f.dom <= 31 ? Math.round(f.dom) : undefined, every: f.every >= 1 && f.every <= 365 ? Math.round(f.every) : undefined,
+        unit: ['day', 'week', 'month'].indexOf(f.unit) >= 0 ? f.unit : undefined }))
+      .filter((f) => f.repeat !== 'custom' || (f.every && f.unit));
     const paid = {};
     if (d.paid && typeof d.paid === 'object') periods.forEach((p) => {
       const src = d.paid[p.id]; if (!src || typeof src !== 'object') return;

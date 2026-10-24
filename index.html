@@ -316,24 +316,31 @@
         <p class="hint" data-i18n="fx.desc">Viene tolta subito dai soldi del periodo, così la quota è già giusta. Il giorno della scadenza Quota te lo ricorda.</p>
         <div class="cats" id="fKinds" role="radiogroup" aria-label="Tipo" data-i18n-aria="fx.kind"></div>
         <div class="field"><label for="fName" data-i18n="fx.name">Nome</label><input id="fName" maxlength="40" autocomplete="off"></div>
-        <div class="two">
-          <div class="field"><label for="fAmt" data-i18n="fx.amount">Importo (€)</label><input id="fAmt" class="num" inputmode="decimal" placeholder="0,00"></div>
-          <div class="field"><label for="fFirst" data-i18n="fx.first">Prossima scadenza</label><input id="fFirst" type="date"></div>
-        </div>
+        <div class="field"><label for="fAmt" data-i18n="fx.amount">Importo (€)</label><input id="fAmt" class="num" inputmode="decimal" placeholder="0,00"></div>
         <div class="field"><span class="flabel" data-i18n="fx.repeat">Ogni quanto</span>
           <div class="seg seg-sm seg-4" id="fRepeat" role="group" aria-label="Ogni quanto" data-i18n-aria="fx.repeat">
             <button type="button" data-repeat="month" data-i18n="fx.rMonth">Ogni mese</button>
-            <button type="button" data-repeat="2month" data-i18n="fx.r2Month">Ogni 2 mesi</button>
             <button type="button" data-repeat="year" data-i18n="fx.rYear">Ogni anno</button>
             <button type="button" data-repeat="once" data-i18n="fx.rOnce">Una volta</button>
+            <button type="button" data-repeat="custom" data-i18n="fx.rOther">Altro</button>
           </div>
         </div>
-        <div class="field" id="fByWrap"><span class="flabel" data-i18n="fx.which">Quale giorno</span>
-          <div class="seg seg-sm" id="fBy" role="group" aria-label="Quale giorno" data-i18n-aria="fx.which">
-            <button type="button" data-by="day"></button>
-            <button type="button" data-by="weekday"></button>
+        <div class="field" id="fDomWrap"><label for="fDom" data-i18n="fx.dom">Giorno del mese</label>
+          <input id="fDom" class="num dom" type="number" inputmode="numeric" min="1" max="31" step="1">
+        </div>
+        <div class="field" id="fEveryWrap"><span class="flabel" data-i18n="fx.every">Ogni</span>
+          <div class="every-row">
+            <label class="sr" for="fEvery" data-i18n="fx.every">Ogni</label>
+            <input id="fEvery" class="num every" type="number" inputmode="numeric" min="1" max="365" step="1">
+            <div class="seg seg-sm seg-3" id="fUnit" role="group" aria-label="Ogni" data-i18n-aria="fx.every">
+              <button type="button" data-unit="day" data-i18n="fx.u.day">giorni</button>
+              <button type="button" data-unit="week" data-i18n="fx.u.week">settimane</button>
+              <button type="button" data-unit="month" data-i18n="fx.u.month">mesi</button>
+            </div>
           </div>
         </div>
+        <div class="field" id="fDateWrap"><label for="fFirst" id="fDateLabel" data-i18n="fx.date">Data</label><input id="fFirst" type="date"></div>
+        <p class="hint num" id="fNext"></p>
         <p class="error" id="fError" hidden></p>
         <div class="row">
           <button class="btn accent" id="fSave" type="button" data-i18n="sh.save">Salva</button>

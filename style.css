@@ -369,6 +369,11 @@ label.link { cursor: pointer; }
 .item.fx { cursor: pointer; }
 .flabel { font-size: 13px; font-weight: 600; }
 .seg-4 { grid-template-columns: 1fr 1fr; }
+.seg-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; flex: 1; min-width: 0; }
+.seg-3 button { padding: 8px 4px; font-size: 13px; }
+.every-row { display: flex; gap: 8px; align-items: stretch; }
+input.every { flex: 0 0 76px; text-align: center; font-family: var(--display); font-weight: 700; font-size: 18px; }
+input.dom { max-width: 120px; text-align: center; font-family: var(--display); font-weight: 700; font-size: 20px; }
 .em-sure { display: flex; flex-direction: column; gap: 4px; background: var(--surface); border-radius: 16px; padding: 14px; box-shadow: inset 0 0 0 1.5px #D9DEF2; }
 .em-sure b { font-family: var(--display); font-size: 17px; }
 .em-sure span { font-size: 14px; color: var(--muted); }
