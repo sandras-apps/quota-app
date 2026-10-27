@@ -609,6 +609,46 @@
   }
 
   /* ---------------- render: Calendario ---------------- */
+  // riepilogo del giorno selezionato (finestra che si apre toccando un giorno)
+  function renderDay() {
+    const p = cur(); if (!p) return;
+    const d = selDate, inP = inPeriod(p, d), future = d > today;
+    $('dayTitle').textContent = d === today ? t('cal.today') : cap(long(d));
+    const st = dayState(p, d);
+    const badge = $('dayBadge');
+    const bmap = { ok: 'cal.legendOk', bad: 'cal.legendBad', zero: 'cal.legendZero', future: 'cal.badgeFuture' };
+    badge.className = 'day-badge ' + (st === 'future' ? '' : st);
+    badge.textContent = bmap[st] ? t(bmap[st]) : '';
+    badge.hidden = !bmap[st];
+    const info = dayInfo(p, d), s = outOn(d), avail = info.avail, rest = avail - s;
+    $('dsAvailL').textContent = future ? t('cal.stQuota') : t('cal.stAvail');
+    $('dsAvail').textContent = money(Math.max(0, future ? info.quota : avail));
+    $('dsSpent').parentElement.hidden = future; $('dsRest').parentElement.hidden = future;
+    $('dsAvail').parentElement.parentElement.classList.toggle('one', future);
+    $('dsSpentL').textContent = t('cal.stSpent');
+    $('dsSpent').textContent = money(s);
+    $('dsRestL').textContent = rest >= 0 ? t('cal.stLeft') : t('cal.stOver');
+    const rb = $('dsRest'); rb.textContent = (rest < 0 ? '−' : '') + money(Math.abs(rest)); rb.className = rest < 0 ? 'neg' : (s > 0 || !future ? 'pos' : '');
+    $('dsSpent').parentElement.parentElement.hidden = !inP;
+    let line = '';
+    if (inP && !future) {
+      const ok = rest >= 0, amt = money(Math.abs(rest));
+      line = mode() === 'ricalcola' ? t(ok ? 'cal.dayRecalcLeft' : 'cal.dayRecalcOver', { amt }) : t(ok ? 'cal.dayCarryLeft' : 'cal.dayCarryOver', { amt });
+      line = cap(line.replace(/^\s*·\s*/, ''));
+    } else if (future) line = t('cal.futureHint');
+    $('dayLine').textContent = line;
+    // scadenze delle spese fisse in quel giorno
+    const ds = dues(p).filter((x) => x.date === d);
+    $('dayDuesWrap').hidden = !ds.length;
+    $('dayDues').innerHTML = ds.map((x) => '<li class="item fx"><span class="ico">' + svg(KIND_ICON[x.f.kind] || 'flag') + '</span>' +
+      '<span class="txt"><b>' + esc(x.f.name) + '</b>' + (x.done ? '<span class="fx-st ok">' + svg('check') + esc(t('fx.paidOn', { date: short(x.date) })) + '</span>'
+        : '<span class="fx-st' + (x.date < today ? ' late' : '') + '">' + esc(x.date < today ? t('fx.toConfirm', { date: short(x.date) }) : x.date === today ? t('fx.dueToday') : t('fx.dueOn', { date: short(x.date) })) + '</span>') + '</span>' +
+      '<span class="amt-v num">' + money(x.amount) + '</span></li>').join('');
+    const items = list().filter((e) => e.date === d);
+    $('dayList').innerHTML = items.length ? items.map(itemHTML).join('') : '<li class="empty">' + t('cal.dayEmpty') + '</li>';
+  }
+  function openDay(d) { selDate = d; renderCalendarView(); openSheet('dsheet'); }
+
   function renderCalendarView() {
     const p = cur(); if (!p) return;
     const tot = totals(p);
@@ -651,21 +691,7 @@
     }
     $('cal').innerHTML = h;
 
-    // giorno selezionato
-    $('dayTitle').textContent = selDate === today ? t('cal.today') : long(selDate);
-    const info = dayInfo(p, selDate), s = outOn(selDate), avail = info.avail;
-    let line = '';
-    if (inPeriod(p, selDate)) {
-      line = t('cal.dayLine', { avail: money(avail), spent: money(s) });
-      if (selDate <= today) {
-        const ok = avail - s >= 0, amt = money(Math.abs(avail - s));
-        if (mode() === 'ricalcola') line += t(ok ? 'cal.dayRecalcLeft' : 'cal.dayRecalcOver', { amt });
-        else line += t(ok ? 'cal.dayCarryLeft' : 'cal.dayCarryOver', { amt });
-      }
-    }
-    $('dayLine').textContent = line;
-    const items = list().filter((e) => e.date === selDate);
-    $('dayList').innerHTML = items.length ? items.map(itemHTML).join('') : '<li class="empty">' + t('cal.dayEmpty') + '</li>';
+    renderDay();
   }
 
   /* ---------------- render: Movimenti ---------------- */
@@ -945,7 +971,7 @@
   $('eYes').addEventListener('click', saveSavings);
 
   function openSheet(id) { $(id).hidden = false; document.body.style.overflow = 'hidden'; }
-  function closeSheet(id) { $(id).hidden = true; if ($('sheet').hidden && $('fsheet').hidden && $('esheet').hidden) document.body.style.overflow = ''; }
+  function closeSheet(id) { $(id).hidden = true; if ($('sheet').hidden && $('fsheet').hidden && $('esheet').hidden && $('dsheet').hidden) document.body.style.overflow = ''; }
 
   /* ---------------- categorie (in Impostazioni) ---------------- */
   let catsType = 'out';
@@ -1054,20 +1080,22 @@
   });
   $('addForReset').addEventListener('click', () => { addDate = null; renderToday(); });
   $('addToDay').addEventListener('click', () => {
-    addDate = selDate; go('today'); renderToday(); $('inAmt').focus();
+    closeSheet('dsheet'); addDate = selDate; go('today'); renderToday(); $('inAmt').focus();
   });
+  $('dClose').addEventListener('click', () => closeSheet('dsheet'));
+  $('dsheet').addEventListener('click', (ev) => { if (ev.target === $('dsheet')) closeSheet('dsheet'); });
 
   $('week').addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-day]'); if (!b) return;
     const p = cur(); if (!p) return;
     // un giorno fuori dal periodo non è nel calendario: apri il giorno più vicino del periodo
     const d = b.dataset.day;
-    selDate = inPeriod(p, d) ? d : (d < p.start ? p.start : p.end);
-    renderCalendarView(); go('calendar');
+    go('calendar');
+    openDay(inPeriod(p, d) ? d : (d < p.start ? p.start : p.end));
   });
   $('cal').addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-day]'); if (!b) return;
-    selDate = b.dataset.day; renderCalendarView();
+    openDay(b.dataset.day);
   });
 
   function onListClick(ev) {
@@ -1347,7 +1375,7 @@
     // quando arriva una versione nuova dell'app, ricarica una volta da sola
     // ...ma non mentre stai scrivendo: in quel caso aspetta che chiudi o lasci l'app
     let reloaded = false, pending = false;
-    const busy = () => !$('sheet').hidden || !$('fsheet').hidden || !$('esheet').hidden || $('inAmt').value !== '' || $('inNote').value !== '' ||
+    const busy = () => !$('sheet').hidden || !$('fsheet').hidden || !$('esheet').hidden || !$('dsheet').hidden || $('inAmt').value !== '' || $('inNote').value !== '' ||
       (document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) ||
       !!document.querySelector('.confirm');
     const reload = () => { if (!reloaded) { reloaded = true; location.reload(); } };

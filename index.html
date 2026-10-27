@@ -179,15 +179,6 @@
         </div>
       </article>
 
-      <article class="card">
-        <div class="card-head"><h2 id="dayTitle">Oggi</h2></div>
-        <p class="hint num" id="dayLine"></p>
-        <ul class="list" id="dayList"></ul>
-        <button type="button" class="btn wide" id="addToDay">
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-          <span data-i18n="cal.addToDay">Aggiungi a questo giorno</span>
-        </button>
-      </article>
     </section>
 
     <!-- ================= PERIODI ================= -->
@@ -310,6 +301,29 @@
     </div>
 
     <!-- ================= SPESA FISSA ================= -->
+    <!-- ================= RIEPILOGO GIORNO ================= -->
+    <div class="sheet-wrap" id="dsheet" hidden>
+      <div class="sheet day-sheet" role="dialog" aria-modal="true" aria-labelledby="dayTitle">
+        <div class="day-head"><h2 id="dayTitle">Oggi</h2><span class="day-badge" id="dayBadge"></span></div>
+        <div class="day-stats num">
+          <div><span id="dsAvailL"></span><b id="dsAvail"></b></div>
+          <div><span id="dsSpentL"></span><b id="dsSpent"></b></div>
+          <div><span id="dsRestL"></span><b id="dsRest"></b></div>
+        </div>
+        <p class="hint num" id="dayLine"></p>
+        <div id="dayDuesWrap" hidden><h3 class="day-sub" data-i18n="cal.dues">Scadenze</h3><ul class="list" id="dayDues"></ul></div>
+        <h3 class="day-sub" data-i18n="cal.moves">Movimenti</h3>
+        <ul class="list" id="dayList"></ul>
+        <div class="row">
+          <button type="button" class="btn accent" id="addToDay">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+            <span data-i18n="cal.addToDay">Aggiungi a questo giorno</span>
+          </button>
+          <button type="button" class="btn" id="dClose" data-i18n="cal.close">Chiudi</button>
+        </div>
+      </div>
+    </div>
+
     <div class="sheet-wrap" id="fsheet" hidden>
       <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fTitle">
         <h2 id="fTitle">Nuova spesa fissa</h2>

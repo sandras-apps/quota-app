@@ -404,3 +404,19 @@ input.dom { max-width: 120px; text-align: center; font-family: var(--display); f
 .more-apps li { display: flex; flex-direction: column; gap: 2px; }
 .more-apps a { color: var(--accent-ink); font-weight: 600; font-size: 15px; }
 .more-apps span { font-size: 14px; color: var(--muted); }
+
+/* riepilogo del giorno */
+.day-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.day-head h2 { font-size: 22px; }
+.day-badge { flex: 0 0 auto; font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--sunk); color: var(--muted); white-space: nowrap; }
+.day-badge.ok { background: var(--pos-soft); color: var(--pos-ink); }
+.day-badge.bad { background: var(--neg-soft); color: var(--neg-ink); }
+.day-badge.zero { background: var(--pos-soft); color: var(--pos-ink); }
+.day-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.day-stats div { background: var(--surface); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.day-stats span { font-size: 12px; color: var(--muted); font-weight: 600; }
+.day-stats b { font-family: var(--display); font-size: 17px; font-weight: 700; overflow-wrap: anywhere; }
+.day-stats b.pos { color: var(--pos-ink); } .day-stats b.neg { color: var(--neg-ink); }
+.day-sub { margin: 4px 0 -4px; font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.day-sheet .list { background: var(--surface); border-radius: 16px; padding: 2px 14px; }
+.day-stats.one { grid-template-columns: 1fr; }
