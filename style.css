@@ -169,16 +169,19 @@ input:focus { border-color: var(--accent); outline: none; }
   position: relative; width: 36px; height: 36px; max-width: 100%; border-radius: 50%;
   display: grid; place-items: center; font-size: 14px; font-weight: 600; color: var(--ink);
 }
-.dd.ok { background: var(--pos); color: #fff; }
-.dd.zero { box-shadow: inset 0 0 0 2px var(--pos); color: var(--pos-ink); }
+.dd.zero { background: var(--pos); color: #fff; }
+.dd.ok { box-shadow: inset 0 0 0 2px var(--pos); color: var(--pos-ink); }
 .dd.bad { background: var(--neg); color: #fff; }
-.dd.bad::after { content: ""; position: absolute; bottom: 5px; left: 50%; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: #fff; }
+.dd.rec { box-shadow: inset 0 0 0 2px var(--neg); color: var(--neg-ink); }
+.dd.bad::after, .dd.rec::after { content: ""; position: absolute; bottom: 5px; left: 50%; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: #fff; }
+.dd.rec::after { background: var(--neg); }
 .dd.future { color: var(--ink); }
 .dd.off { color: var(--muted); opacity: .5; }
-.dd.today:not(.ok):not(.bad):not(.zero) { background: var(--sunk); }
+.dd.today:not(.ok):not(.bad):not(.zero):not(.rec) { background: var(--sunk); }
 .dd.today { font-weight: 800; }
 .dd.sel { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
-.dd.zero.sel { box-shadow: inset 0 0 0 2px var(--pos), 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
+.dd.ok.sel { box-shadow: inset 0 0 0 2px var(--pos), 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
+.dd.rec.sel { box-shadow: inset 0 0 0 2px var(--neg), 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
 .wd .lbl.today { color: var(--accent-ink); font-weight: 700; }
 
 /* calendar */
@@ -189,9 +192,10 @@ input:focus { border-color: var(--accent); outline: none; }
 .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .lg { display: inline-block; width: 12px; height: 12px; border-radius: 50%; position: relative; }
-.lg.ok { background: var(--pos); }
-.lg.zero { box-shadow: inset 0 0 0 2px var(--pos); }
+.lg.zero { background: var(--pos); }
+.lg.ok { box-shadow: inset 0 0 0 2px var(--pos); }
 .lg.bad { background: var(--neg); }
+.lg.rec { box-shadow: inset 0 0 0 2px var(--neg); }
 .lg.bad::after { content: ""; position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff; left: 4.5px; top: 4.5px; }
 
 /* period card */
@@ -410,7 +414,7 @@ input.dom { max-width: 120px; text-align: center; font-family: var(--display); f
 .day-head h2 { font-size: 22px; }
 .day-badge { flex: 0 0 auto; font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--sunk); color: var(--muted); white-space: nowrap; }
 .day-badge.ok { background: var(--pos-soft); color: var(--pos-ink); }
-.day-badge.bad { background: var(--neg-soft); color: var(--neg-ink); }
+.day-badge.bad, .day-badge.rec { background: var(--neg-soft); color: var(--neg-ink); }
 .day-badge.zero { background: var(--pos-soft); color: var(--pos-ink); }
 .day-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .day-stats div { background: var(--surface); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }

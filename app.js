@@ -384,9 +384,11 @@
   function dayState(p, d) {
     if (!inPeriod(p, d)) return 'off';
     if (d > today) return 'future';
-    const s = outOn(d);
-    if (s === 0) return 'zero';
-    return dayInfo(p, d).avail - s < -0.005 ? 'bad' : 'ok';
+    // pallino pieno verde = zero spese · cerchio verde = speso ma in quota
+    // pallino pieno rosso = sforato · cerchio rosso = zero spese ma ancora in recupero
+    const s = outOn(d), avail = dayInfo(p, d).avail;
+    if (s === 0) return avail < -0.005 ? 'rec' : 'zero';
+    return avail - s < -0.005 ? 'bad' : 'ok';
   }
   const totals = (p) => {
     const tin = (p.base || 0) - reserved(p) - deposits() + list().reduce((a, e) => a + (e.type === 'in' ? e.amount : 0), 0);
@@ -616,7 +618,7 @@
     $('dayTitle').textContent = d === today ? t('cal.today') : cap(long(d));
     const st = dayState(p, d);
     const badge = $('dayBadge');
-    const bmap = { ok: 'cal.legendOk', bad: 'cal.legendBad', zero: 'cal.legendZero', future: 'cal.badgeFuture' };
+    const bmap = { ok: 'cal.legendOk', bad: 'cal.legendBad', zero: 'cal.legendZero', rec: 'cal.legendRec', future: 'cal.badgeFuture' };
     badge.className = 'day-badge ' + (st === 'future' ? '' : st);
     badge.textContent = bmap[st] ? t(bmap[st]) : '';
     badge.hidden = !bmap[st];

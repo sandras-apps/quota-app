@@ -22,7 +22,7 @@ Quota è un'app di budget giornaliero. Scegli un periodo (per esempio da uno sti
 - **Risparmi**: puoi aggiungere soldi che ti avanzano (escono subito dalla quota) o toglierne (tornano divisi sui giorni che restano, con conferma).
 - **Imprevisti**: in caso di emergenza puoi pagare una spesa precisa con i risparmi. Non aumenta la quota e nei movimenti appare come "Imprevisto · dai risparmi".
 - **Categorie tue** per uscite ed entrate (fino a 8 per tipo): in *Impostazioni → Categorie* o con il **+** accanto ad "Altro".
-- Calendario con tre stati riconoscibili anche dalla forma: cerchio pieno (in quota), cerchio vuoto (zero spese), cerchio con punto (sforato).
+- Calendario a colpo d'occhio: pallino verde pieno (zero spese), cerchio verde (speso ma in quota), pallino rosso (sforato), cerchio rosso (zero spese ma ancora in recupero). Toccando un giorno si apre il suo riepilogo.
 - In **italiano, inglese e spagnolo** (si sceglie in *Impostazioni → Lingua*).
 - Tema chiaro e scuro automatici, funziona **offline**, si installa sulla schermata Home.
 - Gratuita, **senza account** e senza cookie: i dati restano sul telefono.
