@@ -36,7 +36,7 @@
       it: 'Una domanda profonda al giorno, da scrivere sul tuo diario di carta. Gratis, senza account.',
       en: 'One deep question a day, to answer in your own paper journal. Free, no account.',
       es: 'Una pregunta profunda al día, para responder en tu diario de papel. Gratis, sin cuenta.' },
-    { id: 'quota', name: 'Quota', url: 'https://sandras-apps.github.io/quota-app/', live: false,
+    { id: 'quota', name: 'Quota', url: 'https://sandras-apps.github.io/quota-app/', live: true,
       it: 'Ti dice quanto puoi spendere oggi; se un giorno risparmi, il giorno dopo hai di più. Gratis, senza account.',
       en: 'Tells you how much you can spend today; save a little and tomorrow you have more. Free, no account.',
       es: 'Te dice cuánto puedes gastar hoy; si un día ahorras, al día siguiente tienes más. Gratis, sin cuenta.' },
