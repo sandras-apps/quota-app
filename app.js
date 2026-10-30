@@ -181,6 +181,7 @@
   let state = { periods: [], current: null, entries: {}, settings: { overspend: 'riporto' }, cats: { out: [], in: [] }, fixed: [], paid: {} };
   try { const raw = localStorage.getItem(KEY); if (raw) state = Object.assign(state, JSON.parse(raw)); } catch (e) { /* storage non disponibile */ }
   state.settings = Object.assign({ overspend: 'riporto' }, state.settings || {});
+  if (!state.dayModes || typeof state.dayModes !== 'object') state.dayModes = {};
   state.cats = Object.assign({ out: [], in: [] }, state.cats || {});
   state.fixed = Array.isArray(state.fixed) ? state.fixed : [];
   state.paid = state.paid && typeof state.paid === 'object' ? state.paid : {};
@@ -347,39 +348,57 @@
   const outOn = (day) => list().reduce((a, e) => a + (counts(e) && e.date === day ? e.amount : 0), 0);
   const outBefore = (day) => list().reduce((a, e) => a + (counts(e) && e.date < day ? e.amount : 0), 0);
   const availableAt = (p, day) => accrued(p, day) - outBefore(day);
-  const mode = () => state.settings.overspend === 'ricalcola' ? 'ricalcola' : 'riporto';
+  // regola dello sforamento: quella del periodo (Impostazioni), oppure quella scelta solo per un giorno
+  const periodMode = (p) => ((p && p.overspend) || state.settings.overspend) === 'ricalcola' ? 'ricalcola' : 'riporto';
+  const mode = () => periodMode(cur());
+  const dayOverride = (p, d) => (state.dayModes[p.id] || {})[d];
+  const dayMode = (p, d) => dayOverride(p, d) || periodMode(p);
+  /* Simulazione giorno per giorno: ogni giorno parte dalla sua quota (q) + quello che arriva dai giorni prima.
+     A fine giornata il saldo (avanzo o sforamento) va:
+     - "Recupera": tutto al giorno dopo;
+     - "Ricalcola": diviso in parti uguali su tutti i giorni che restano.
+     Con tutti i giorni in "Recupera" o tutti in "Ricalcola" il risultato è lo stesso dei due metodi classici.
+     zeroAfter: dopo questo giorno conta come se non spendessi più nulla (per le previsioni). */
+  function sim(p, zeroAfter) {
+    const k = 'sim:' + p.id + ':' + (zeroAfter || '');
+    if (memo[k]) return memo[k];
+    const r = {};
+    let carry = 0, perDay = 0;
+    for (let d = p.start; d <= p.end; d = addDays(d, 1)) {
+      const q = quotaOn(p, d), raw = q + carry + perDay;
+      const spent = zeroAfter && d > zeroAfter ? 0 : outOn(d);
+      const m = dayMode(p, d), left = raw - spent, rem = diff(d, p.end);
+      if (m === 'ricalcola' && rem > 0) { perDay += left / rem; carry = 0; } else carry = left;
+      r[d] = { raw, q, mode: m, left };
+    }
+    return (memo[k] = r);
+  }
   const knownMoney = (p, day) => (p.base || 0) - reserved(p) - deposits(day) + list().reduce((a, e) => a + (e.type === 'in' && e.date <= day ? e.amount : 0), 0);
   function dayInfo(p, day) {
     const q0 = quotaOn(p, day);
-    if (mode() === 'ricalcola') {
-      const once = list().reduce((a, e) => a + (isOneOff(e) && (e.date === day || (day === p.start && e.date < p.start)) ? e.amount : 0), 0);
-      const rest = knownMoney(p, day) - outBefore(day) - once;
-      const total = rest + once;
-      const n = diff(day, p.end) + 1;
-      const avail = Math.max(0, Math.min(total, (rest > 0 ? rest / n : 0) + once));
-      return { avail, quota: avail, carried: 0, rest: total, n, q0 };
+    if (!inPeriod(p, day)) { const avail = availableAt(p, day); return { avail, quota: q0, carried: avail - q0, q0, rest: knownMoney(p, day) - outBefore(day), mode: periodMode(p) }; }
+    const r = sim(p)[day], rest = knownMoney(p, day) - outBefore(day), n = diff(day, p.end) + 1;
+    if (r.mode === 'ricalcola') {
+      // come prima: mai sotto zero e mai più di quanto resta nel periodo
+      const avail = Math.max(0, Math.min(rest, r.raw));
+      return { avail, quota: avail, carried: 0, rest, n, q0, mode: 'ricalcola' };
     }
-    const avail = availableAt(p, day);
-    return { avail, quota: q0, carried: avail - q0, q0 };
+    return { avail: r.raw, quota: q0, carried: r.raw - q0, q0, rest, n, mode: 'riporto' };
   }
   // "Recupera": il primo giorno in cui torni ad avere soldi, se da ora non spendi più nulla
   function recovery(p, day) {
-    const spentSoFar = outBefore(addDays(day, 1));
+    const r = sim(p, day);
     for (let d = addDays(day, 1); d <= p.end; d = addDays(d, 1)) {
-      const a = accrued(p, d) - spentSoFar;
-      if (a > 0.005) return { days: diff(day, d), date: d, amount: a };
+      if (r[d].raw > 0.005) return { days: diff(day, d), date: d, amount: r[d].raw };
     }
-    return { days: null, missing: spentSoFar - accrued(p, p.end) };
+    return { days: null, missing: Math.max(0, -r[p.end].left) };
   }
   // quanto avrai domani se oggi non spendi più nulla
   function tomorrowIfStop(p, day) {
     const t = addDays(day, 1);
     if (t > p.end) return null;
-    if (mode() === 'ricalcola') {
-      const rest = knownMoney(p, day) - outBefore(t);
-      return rest > 0 ? rest / (diff(t, p.end) + 1) : 0;
-    }
-    return accrued(p, t) - outBefore(t);
+    const x = sim(p, day)[t].raw;
+    return dayMode(p, t) === 'ricalcola' ? Math.max(0, x) : x;
   }
   function dayState(p, d) {
     if (!inPeriod(p, d)) return 'off';
@@ -485,7 +504,7 @@
       $('status').dataset.action = '';
       const info = dayInfo(p, today);
       const spent = outOn(today);
-      const recalc = mode() === 'ricalcola';
+      const recalc = info.mode === 'ricalcola';
       const left = info.avail - spent;
       const restAfter = recalc ? info.rest - spent : null;
 
@@ -497,7 +516,8 @@
       } else if (left < 0) {
         $('heroLabel').textContent = recalc ? t('hero.overQuota') : t('hero.inRed');
         $('heroAmt').textContent = '−' + money(-left);
-        $('heroSub').textContent = t('hero.quota', { amt: money(info.quota) });
+        // la quota "del giorno": con Ricalcola su tutto il periodo è quella ricalcolata, altrimenti quella fissa
+        $('heroSub').textContent = t('hero.quota', { amt: money(recalc && periodMode(p) === 'ricalcola' ? info.quota : info.q0) });
         setRing(1, 'neg');
       } else {
         $('heroLabel').textContent = t('hero.canSpend');
@@ -524,6 +544,8 @@
         setStatus('', 'up', t('st.left', { amt: money(left) }), last ? t('st.lastDay') : t(recalc ? 'st.leftRecalc' : 'st.leftCarry', { amt: money(tm) }));
       }
     }
+
+    renderDayModeBox('todayMode', 'todayModeHint', p, today);
 
     // aggiunta
     const d = addDate || today;
@@ -611,6 +633,35 @@
   }
 
   /* ---------------- render: Calendario ---------------- */
+  // scelta Recupera / Ricalcola solo per un giorno: visibile nei giorni (fino a oggi) in cui hai sforato,
+  // o se per quel giorno hai già cambiato la regola
+  function renderDayModeBox(boxId, hintId, p, d) {
+    const box = $(boxId);
+    if (!p || !inPeriod(p, d) || d > today || d === p.end) { box.hidden = true; return; }
+    const r = sim(p)[d], over = r.left < -0.005, ov = dayOverride(p, d);
+    box.hidden = !(over || ov);
+    if (box.hidden) return;
+    box.dataset.day = d;
+    const m = dayMode(p, d), pm = periodMode(p);
+    $$('#' + boxId + ' [data-dmode]').forEach((b) => {
+      b.setAttribute('aria-pressed', String(b.dataset.dmode === m));
+      b.textContent = t(b.dataset.dmode === 'ricalcola' ? 'dm.recalc' : 'dm.recover');
+    });
+    $(hintId).innerHTML = esc(t(m === 'ricalcola' ? 'dm.hintRecalc' : 'dm.hintRecover')) + (m === pm ? ' <em>· ' + esc(t('dm.default')) + '</em>' : '');
+  }
+  function setDayMode(d, m) {
+    const p = cur(); if (!p) return;
+    const all = state.dayModes[p.id] = state.dayModes[p.id] || {};
+    if (m === periodMode(p)) delete all[d]; else all[d] = m;
+    if (!Object.keys(all).length) delete state.dayModes[p.id];
+    save(); renderAll();
+    toast(m === periodMode(p) ? t('dm.toastBack') : t(m === 'ricalcola' ? 'dm.toastRecalc' : 'dm.toastRecover'));
+  }
+  ['todayMode', 'dayMode'].forEach((id) => $(id).addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-dmode]'); if (!b) return;
+    setDayMode($(id).dataset.day, b.dataset.dmode);
+  }));
+
   // riepilogo del giorno selezionato (finestra che si apre toccando un giorno)
   function renderDay() {
     const p = cur(); if (!p) return;
@@ -635,10 +686,11 @@
     let line = '';
     if (inP && !future) {
       const ok = rest >= 0, amt = money(Math.abs(rest));
-      line = mode() === 'ricalcola' ? t(ok ? 'cal.dayRecalcLeft' : 'cal.dayRecalcOver', { amt }) : t(ok ? 'cal.dayCarryLeft' : 'cal.dayCarryOver', { amt });
+      line = dayMode(p, d) === 'ricalcola' ? t(ok ? 'cal.dayRecalcLeft' : 'cal.dayRecalcOver', { amt }) : t(ok ? 'cal.dayCarryLeft' : 'cal.dayCarryOver', { amt });
       line = cap(line.replace(/^\s*·\s*/, ''));
     } else if (future) line = t('cal.futureHint');
     $('dayLine').textContent = line;
+    renderDayModeBox('dayMode', 'dayModeHint', p, d);
     // scadenze delle spese fisse in quel giorno
     const ds = dues(p).filter((x) => x.date === d);
     $('dayDuesWrap').hidden = !ds.length;
@@ -1131,7 +1183,9 @@
   /* ---------------- impostazione sforamento ---------------- */
   $('modeOpts').addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-mode]'); if (!b) return;
-    state.settings.overspend = b.dataset.mode; save(); renderAll();
+    state.settings.overspend = b.dataset.mode;
+    const p = cur(); if (p) p.overspend = b.dataset.mode;
+    save(); renderAll();
     toast(b.dataset.mode === 'ricalcola' ? t('mode.toastRecalc') : t('mode.toastRecover'));
   });
   $('langOpts').addEventListener('click', (ev) => {
@@ -1238,7 +1292,7 @@
     }
     if (plan.length) applyPlan(plan);
     if (editingId) { Object.assign(state.periods.find((p) => p.id === editingId), data); state.current = editingId; }
-    else { const id = uid(); state.periods.push(Object.assign({ id }, data)); state.current = id; state.entries[id] = []; }
+    else { const id = uid(); state.periods.push(Object.assign({ id, overspend: state.settings.overspend }, data)); state.current = id; state.entries[id] = []; }
     save(); closeEditor();
     selDate = clampSel(cur()); addDate = null;
     renderAll(); go('today');
@@ -1291,7 +1345,8 @@
     const d = j && j.data;
     if (!d || !Array.isArray(d.periods) || !d.entries || typeof d.entries !== 'object' || Array.isArray(d.entries)) return null;
     const periods = d.periods.filter((p) => p && typeof p.id === 'string' && isDay(p.start) && isDay(p.end) && p.end >= p.start)
-      .map((p) => ({ id: p.id, name: typeof p.name === 'string' ? p.name : '', start: p.start, end: p.end, base: posNum(p.base), save: posNum(p.save) }));
+      .map((p) => ({ id: p.id, name: typeof p.name === 'string' ? p.name : '', start: p.start, end: p.end, base: posNum(p.base), save: posNum(p.save),
+        overspend: p.overspend === 'ricalcola' || p.overspend === 'riporto' ? p.overspend : undefined }));
     if (periods.length !== d.periods.length) return null;
     const entries = {};
     for (const p of periods) {
@@ -1324,8 +1379,13 @@
       Object.keys(src).forEach((k) => { const h = src[k]; if (h && typeof h.amount === 'number' && isFinite(h.amount) && h.amount >= 0) (paid[p.id] = paid[p.id] || {})[k] = { amount: h.amount, at: isDay(h.at) ? h.at : p.start }; });
     });
     const st = d.settings && typeof d.settings === 'object' ? d.settings : {};
+    const dayModes = {};
+    if (d.dayModes && typeof d.dayModes === 'object') periods.forEach((p) => {
+      const src = d.dayModes[p.id]; if (!src || typeof src !== 'object') return;
+      Object.keys(src).forEach((k) => { if (isDay(k) && (src[k] === 'ricalcola' || src[k] === 'riporto')) (dayModes[p.id] = dayModes[p.id] || {})[k] = src[k]; });
+    });
     return {
-      periods, entries, cats: { out: cleanCats(cin.out), in: cleanCats(cin.in) }, fixed, paid,
+      periods, entries, cats: { out: cleanCats(cin.out), in: cleanCats(cin.in) }, fixed, paid, dayModes,
       current: periods.some((p) => p.id === d.current) ? d.current : null,
       settings: { overspend: st.overspend === 'ricalcola' ? 'ricalcola' : 'riporto', lang: state.settings.lang, lastBackup: isDay(st.lastBackup) ? st.lastBackup : undefined }
     };

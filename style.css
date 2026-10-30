@@ -424,3 +424,10 @@ input.dom { max-width: 120px; text-align: center; font-family: var(--display); f
 .day-sub { margin: 4px 0 -4px; font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
 .day-sheet .list { background: var(--surface); border-radius: 16px; padding: 2px 14px; }
 .day-stats.one { grid-template-columns: 1fr; }
+
+/* sforamento: scelta solo per un giorno */
+.dmode { display: flex; flex-direction: column; gap: 8px; background: var(--surface); border-radius: 16px; padding: 12px 14px; }
+.dmode-l { font-size: 14px; font-weight: 600; }
+.dmode .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.dmode-h { margin: 0; font-size: 13px; color: var(--muted); }
+.dmode-h em { font-style: normal; color: var(--accent-ink); font-weight: 600; }

@@ -54,6 +54,15 @@
         <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
 
+      <div class="dmode" id="todayMode" hidden>
+        <span class="dmode-l" data-i18n="dm.today">Lo sforamento di oggi:</span>
+        <div class="seg seg-sm" role="group" aria-label="Lo sforamento di oggi" data-i18n-aria="dm.today">
+          <button type="button" data-dmode="riporto" data-i18n="dm.recover">Recupera</button>
+          <button type="button" data-dmode="ricalcola" data-i18n="dm.recalc">Ricalcola</button>
+        </div>
+        <p class="dmode-h" id="todayModeHint"></p>
+      </div>
+
       <article class="card add" id="addCard">
         <div class="add-for" id="addFor" hidden>
           <span id="addForText"></span>
@@ -206,6 +215,7 @@
             <span class="radio" aria-hidden="true"></span>
           </button>
         </div>
+        <p class="hint" data-i18n="mode.periodHint"></p>
       </article>
 
       <article class="card">
@@ -312,6 +322,14 @@
           <div><span id="dsRestL"></span><b id="dsRest"></b></div>
         </div>
         <p class="hint num" id="dayLine"></p>
+        <div class="dmode" id="dayMode" hidden>
+          <span class="dmode-l" data-i18n="dm.day">Per questo giorno:</span>
+          <div class="seg seg-sm" role="group" aria-label="Per questo giorno" data-i18n-aria="dm.day">
+            <button type="button" data-dmode="riporto" data-i18n="dm.recover">Recupera</button>
+            <button type="button" data-dmode="ricalcola" data-i18n="dm.recalc">Ricalcola</button>
+          </div>
+          <p class="dmode-h" id="dayModeHint"></p>
+        </div>
         <div id="dayDuesWrap" hidden><h3 class="day-sub" data-i18n="cal.dues">Scadenze</h3><ul class="list" id="dayDues"></ul></div>
         <h3 class="day-sub" data-i18n="cal.moves">Movimenti</h3>
         <ul class="list" id="dayList"></ul>
