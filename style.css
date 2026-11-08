@@ -431,3 +431,11 @@ input.dom { max-width: 120px; text-align: center; font-family: var(--display); f
 .dmode .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
 .dmode-h { margin: 0; font-size: 13px; color: var(--muted); }
 .dmode-h em { font-style: normal; color: var(--accent-ink); font-weight: 600; }
+
+/* avviso: stai usando i soldi messi da parte */
+.risk { background: var(--neg-soft); border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.risk b { font-family: var(--display); font-size: 15px; color: var(--neg-ink); }
+.risk.in-card { margin-top: 10px; border-radius: 14px; padding: 12px; }
+
+/* movimenti modificabili: tocca la riga */
+.list .item[data-id] { cursor: pointer; }

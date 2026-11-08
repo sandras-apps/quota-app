@@ -35,6 +35,7 @@
       </header>
 
       <div class="dues" id="dueBanners"></div>
+      <div class="risk" id="riskToday" role="alert" hidden></div>
 
       <div class="ring-wrap" id="ringWrap">
         <svg class="ring" viewBox="0 0 200 200" aria-hidden="true">
@@ -109,6 +110,8 @@
     <section class="view" data-view="set" hidden>
       <header class="top"><h1 data-i18n="set.title">Da parte</h1><button class="pill" type="button" data-open-periods><span class="period-name" data-i18n="period">Periodo</span></button></header>
 
+      <div class="risk" id="riskSet" role="alert" hidden></div>
+
       <article class="card set-sum">
         <span class="set-label" data-i18n="set.total">In questo periodo metti da parte</span>
         <span class="set-amt num" id="setTotal">0 €</span>
@@ -177,6 +180,8 @@
         <div class="bar"><span id="pBar"></span></div>
         <div class="p-row num"><span id="pSpent"></span><span id="pLeft"></span></div>
         <p class="hint num" id="pHint"></p>
+        <p class="hint num" id="pReserved" hidden></p>
+        <div class="risk in-card" id="riskCal" role="alert" hidden></div>
       </article>
 
       <article class="card">
@@ -406,6 +411,28 @@
             <button class="btn btn-sav-solid" id="eYes" type="button">Sì, usa i risparmi</button>
             <button class="btn" id="eBack" type="button" data-i18n="em.back">Indietro</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= MODIFICA MOVIMENTO ================= -->
+    <div class="sheet-wrap" id="xsheet" hidden>
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="xTitle">
+        <h2 id="xTitle">Modifica movimento</h2>
+        <div class="cats" id="xCats" role="radiogroup"></div>
+        <div class="field"><label for="xAmt" data-i18n="add.amount">Importo</label><input id="xAmt" class="num" inputmode="decimal" placeholder="0,00"></div>
+        <div class="field"><label for="xNote" data-i18n="add.note">Nota</label><input id="xNote" maxlength="60" autocomplete="off"></div>
+        <div class="field" id="xDateWrap"><label for="xDate" data-i18n="x.date">Giorno</label><input id="xDate" type="date"></div>
+        <div class="field" id="xWhen">
+          <div class="seg seg-sm" role="group">
+            <button type="button" data-xspread="1" data-i18n="add.spread">Diviso sui giorni</button>
+            <button type="button" data-xspread="0" data-i18n="add.once">Tutto subito</button>
+          </div>
+        </div>
+        <p class="error" id="xError" hidden></p>
+        <div class="row">
+          <button class="btn accent" id="xSave" type="button" data-i18n="sh.save">Salva</button>
+          <button class="btn" id="xCancel" type="button" data-i18n="sh.cancel">Annulla</button>
         </div>
       </div>
     </div>

@@ -414,6 +414,30 @@
     const tout = list().reduce((a, e) => a + (counts(e) ? e.amount : 0), 0);
     return { tin, tout, left: tin - tout };
   };
+  // quello che è già stato tolto dal totale: spese fisse del periodo e risparmi del periodo
+  function reservedInfo(p) {
+    const net = list().reduce((x, e) => x + (isDeposit(e) ? e.amount : e.sav === 'back' ? -e.amount : 0), 0);
+    const sv = Math.max(0, (p.save || 0) + net);
+    const byName = {};
+    dues(p).forEach((x) => { byName[x.f.name] = (byName[x.f.name] || 0) + x.amount; });
+    const parts = Object.keys(byName).map((n) => n + ' ' + money(byName[n]));
+    if (sv > 0.004) parts.push(t('res.savings') + ' ' + money(sv));
+    return { total: r2(sv + fixedTotal(p)), list: parts.join(', ') };
+  }
+  /* Se spendi più dei soldi liberi del periodo, quello che manca viene da ciò che hai messo da parte
+     (affitto, bollette, risparmi): lo diciamo chiaramente, in Oggi, Da parte e Calendario. */
+  function renderRisk(p) {
+    const ids = ['riskToday', 'riskSet', 'riskCal'];
+    const over = p && today >= p.start ? r2(-totals(p).left) : 0;
+    if (!(over > 0.004)) { ids.forEach((id) => { $(id).hidden = true; }); return; }
+    const r = reservedInfo(p);
+    let body;
+    if (r.total <= 0.004) body = t('risk.bodyNone', { amt: money(over) });
+    else if (over > r.total + 0.004) body = t('risk.bodyAll', { amt: money(over), list: r.list, miss: money(r2(over - r.total)) });
+    else body = t('risk.body', { amt: money(over), list: r.list });
+    const h = '<b>' + esc(t('risk.title')) + '</b><span>' + esc(body) + '</span>';
+    ids.forEach((id) => { $(id).innerHTML = h; $(id).hidden = false; });
+  }
   const clampSel = (p) => inPeriod(p, today) ? today : (today < p.start ? p.start : p.end);
 
   /* ---------------- render: Oggi ---------------- */
@@ -490,6 +514,7 @@
     const p = cur(); if (!p) return;
     $$('.period-name').forEach((el) => { el.textContent = p.name || range(p); });
     renderDues(p);
+    renderRisk(p);
 
     if (!inPeriod(p, today)) {
       const tot = totals(p);
@@ -722,6 +747,9 @@
       const avg = mode() === 'ricalcola' ? tm : (accrued(p, p.end) - outBefore(addDays(today, 1))) / diff(today, p.end);
       $('pHint').textContent = t(mode() === 'ricalcola' ? 'cal.perDayRecalc' : 'cal.perDayAvg', { amt: money(Math.max(0, avg)) });
     } else $('pHint').textContent = '';
+    const res = reservedInfo(p);
+    $('pReserved').hidden = !(res.total > 0.004);
+    $('pReserved').textContent = res.total > 0.004 ? t('res.line', { amt: money(res.total), list: res.list }) : '';
 
     // calendario
     let h = '';
@@ -1025,7 +1053,7 @@
   $('eYes').addEventListener('click', saveSavings);
 
   function openSheet(id) { $(id).hidden = false; document.body.style.overflow = 'hidden'; }
-  function closeSheet(id) { $(id).hidden = true; if ($('sheet').hidden && $('fsheet').hidden && $('esheet').hidden && $('dsheet').hidden) document.body.style.overflow = ''; }
+  function closeSheet(id) { $(id).hidden = true; if ($('sheet').hidden && $('fsheet').hidden && $('esheet').hidden && $('dsheet').hidden && $('xsheet').hidden) document.body.style.overflow = ''; }
 
   /* ---------------- categorie (in Impostazioni) ---------------- */
   let catsType = 'out';
@@ -1125,10 +1153,12 @@
     const d = addDate || today;
     const entry = { id: uid(), date: d, amount: v, type, cat, note: $('inNote').value.trim() };
     if (type === 'in') entry.spread = spread;
+    const wasOk = totals(cur()).left >= -0.004;
     list().push(entry);
     save();
+    const risky = type === 'out' && wasOk && totals(cur()).left < -0.004 && reservedInfo(cur()).total > 0.004;
     $('inAmt').value = ''; $('inNote').value = ''; $('inAmt').blur();
-    toast(d !== today ? t(type === 'in' ? 'add.doneInOn' : 'add.doneOutOn', { date: short(d) }) : t(type === 'in' ? 'add.doneIn' : 'add.doneOut'));
+    toast(risky ? t('risk.toast') : d !== today ? t(type === 'in' ? 'add.doneInOn' : 'add.doneOutOn', { date: short(d) }) : t(type === 'in' ? 'add.doneIn' : 'add.doneOut'));
     if (addDate) { selDate = addDate; addDate = null; }
     renderAll();
   });
@@ -1153,7 +1183,12 @@
   });
 
   function onListClick(ev) {
-    const del = ev.target.closest('.del'); if (!del) return;
+    const del = ev.target.closest('.del');
+    if (!del) {
+      const row = ev.target.closest('.item[data-id]');
+      if (row && !ev.target.closest('.confirm')) openEntry(row.dataset.id);
+      return;
+    }
     const li = del.closest('.item'), id = li.dataset.id;
     const e = list().find((x) => x.id === id); if (!e) return;
     // eliminare dei risparmi già usati: avvisa prima cosa succede a "togli" e imprevisti
@@ -1173,6 +1208,66 @@
     li.querySelector('[data-no]').addEventListener('click', renderAll);
   }
   ['todayList', 'dayList', 'movesList'].forEach((id) => $(id).addEventListener('click', onListClick));
+
+  /* ---------------- modifica di un movimento ----------------
+     Uscite ed entrate: importo, categoria, nota, giorno (e per le entrate "diviso / tutto subito").
+     Movimenti dei risparmi: importo e nota, con gli stessi controlli di quando li crei. */
+  let xe = null, xCat = null, xSpread = true;
+  function renderXCats() {
+    const ty = xe.type === 'in' ? 'in' : 'out';
+    $('xCats').innerHTML = cats(ty).map((c) =>
+      '<button type="button" class="cat" role="radio" aria-checked="' + (c.id === xCat) + '" data-xcat="' + c.id + '">' + svg(c.icon) + esc(catName(c)) + '</button>').join('');
+  }
+  const renderXWhen = () => $$('#xWhen [data-xspread]').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.xspread === '1') === xSpread)));
+  function openEntry(id) {
+    const p = cur(), e = list().find((x) => x.id === id);
+    if (!p || !e) return;
+    xe = e; xCat = e.cat; xSpread = !isOneOff(e);
+    const sav = isSavMove(e), ty = e.type === 'in' ? 'in' : 'out';
+    $('xTitle').textContent = t(sav ? 'x.titleSav' : ty === 'in' ? 'x.titleIn' : 'x.titleOut');
+    $('xAmt').value = String(e.amount).replace('.', ',');
+    $('xNote').value = e.note || '';
+    $('xDate').value = e.date; $('xDate').min = p.start; $('xDate').max = p.end;
+    $('xCats').hidden = sav; $('xDateWrap').hidden = sav; $('xWhen').hidden = sav || ty !== 'in';
+    $('xError').hidden = true;
+    if (!sav) renderXCats();
+    renderXWhen();
+    openSheet('xsheet');
+  }
+  $('xCats').addEventListener('click', (ev) => { const b = ev.target.closest('[data-xcat]'); if (b) { xCat = b.dataset.xcat; renderXCats(); } });
+  $('xWhen').addEventListener('click', (ev) => { const b = ev.target.closest('[data-xspread]'); if (b) { xSpread = b.dataset.xspread === '1'; renderXWhen(); } });
+  $('xCancel').addEventListener('click', () => closeSheet('xsheet'));
+  $('xsheet').addEventListener('click', (ev) => { if (ev.target === $('xsheet')) closeSheet('xsheet'); });
+  $('xSave').addEventListener('click', () => {
+    const p = cur(); if (!p || !xe || !list().includes(xe)) { closeSheet('xsheet'); return; }
+    const err = (s) => { $('xError').textContent = s; $('xError').hidden = false; };
+    const v = parseAmt($('xAmt').value), note = $('xNote').value.trim().slice(0, 60);
+    if (!(v > 0)) { err(t('em.badAmt')); $('xAmt').focus(); return; }
+    const wasOk = totals(p).left >= -0.004;
+    if (isSavMove(xe)) {
+      const pot = savingsPot(), old = xe.amount, d = r2(v - old);
+      if (xe.fromSavings && !note) { err(t('em.badNote')); $('xNote').focus(); return; }
+      if ((xe.fromSavings || xe.sav === 'back') && d > pot + 0.004) { err(t('em.tooMuch', { amt: money(Math.max(0, r2(pot + old))) })); return; }
+      if (isDeposit(xe)) {
+        // abbassare: non sotto quello che è già stato usato · alzare: al massimo quello che ti resta
+        if (d < 0 && -d > pot + 0.004) { err(t('x.savUsed', { amt: money(Math.max(0, r2(old - pot))) })); return; }
+        if (d > 0) {
+          const left = r2(mode() === 'ricalcola' ? totals(p).left : dayInfo(p, today).avail - outOn(today));
+          if (d > left + 0.004) { err(t('em.addTooMuch', { amt: money(Math.max(0, r2(old + left))) })); return; }
+        }
+      }
+      xe.amount = v; xe.note = note;
+    } else {
+      const date = $('xDate').value;
+      if (!isDay(date) || !inPeriod(p, date)) { err(t('x.badDate')); $('xDate').focus(); return; }
+      xe.amount = v; xe.note = note; xe.date = date; xe.cat = xCat;
+      if (xe.type === 'in') xe.spread = xSpread;
+    }
+    const risky = xe.type !== 'in' && wasOk && totals(p).left < -0.004 && reservedInfo(p).total > 0.004;
+    xe = null;
+    save(); closeSheet('xsheet'); renderAll();
+    toast(risky ? t('risk.toast') : t('x.saved'));
+  });
 
   $$('.tabs button').forEach((b) => b.addEventListener('click', () => {
     filter = b.dataset.filter;
