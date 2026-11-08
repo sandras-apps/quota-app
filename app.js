@@ -326,7 +326,17 @@
   }
 
   function sources(p) {
-    const s = [{ date: p.start, amount: (p.base || 0) - reserved(p) }];
+    const s = [{ date: p.start, amount: (p.base || 0) - (p.save || 0) }];
+    // spese fisse: tolte dall'inizio del periodo; se le hai aggiunte dopo, dal giorno in cui le hai aggiunte
+    // (divise sui giorni che restano), così i giorni passati non cambiano colore.
+    // Se alla scadenza l'importo vero è diverso, la differenza conta dal giorno in cui lo confermi.
+    const clampP = (d) => d < p.start ? p.start : d > p.end ? p.end : d;
+    const done = state.paid[p.id] || {};
+    dues(p).forEach((x) => {
+      s.push({ date: clampP(x.f.added || p.start), amount: -x.f.amount });
+      const h = done[x.key];
+      if (h && Math.abs(h.amount - x.f.amount) > 0.004) s.push({ date: clampP(h.at || p.start), amount: x.f.amount - h.amount });
+    });
     list().forEach((e) => {
       if (e.type === 'in') s.push({ date: e.date < p.start ? p.start : e.date, amount: e.amount, once: isOneOff(e) });
       // messi nei risparmi: escono tutti dal giorno in cui li sposti
@@ -371,7 +381,7 @@
       const left = raw - spent, over = spent > 0 && left < -0.005, rem = diff(d, p.end);
       const m = over ? dayMode(p, d) : periodMode(p);
       if (m === 'ricalcola' && rem > 0) { perDay += left / rem; carry = 0; } else carry = left;
-      r[d] = { raw, q, mode: m, left, over };
+      r[d] = { raw, q, eff: q + perDay, mode: m, left, over };
     }
     return (memo[k] = r);
   }
@@ -383,9 +393,10 @@
     if (r.mode === 'ricalcola') {
       // come prima: mai sotto zero e mai più di quanto resta nel periodo
       const avail = Math.max(0, Math.min(rest, r.raw));
-      return { avail, quota: avail, carried: 0, rest, n, q0, mode: 'ricalcola' };
+      return { avail, quota: avail, carried: 0, rest, n, q0: r.eff, mode: 'ricalcola' };
     }
-    return { avail: r.raw, quota: q0, carried: r.raw - q0, q0, rest, n, mode: 'riporto' };
+    // quota del giorno: quella base, meno (o più) la parte degli sforamenti/avanzi ridivisi sui giorni
+    return { avail: r.raw, quota: r.eff, carried: r.raw - r.eff, q0: r.eff, rest, n, mode: 'riporto' };
   }
   // "Recupera": il primo giorno in cui torni ad avere soldi, se da ora non spendi più nulla
   function recovery(p, day) {
@@ -976,7 +987,7 @@
       ['dom', 'every', 'unit', 'by'].forEach((k) => delete old[k]);
       Object.assign(old, data);
     }
-    else state.fixed.push(Object.assign({ id: 'f_' + uid() }, data));
+    else state.fixed.push(Object.assign({ id: 'f_' + uid(), added: today }, data));
     save(); closeSheet('fsheet'); renderAll();
     toast(t('fx.saved'));
   });
@@ -1030,7 +1041,7 @@
       // con "Recupera" i soldi escono tutti oggi: puoi spostare al massimo quello che oggi ti resta.
       // con "Ricalcola" vengono tolti da quello che resta del periodo.
       const recalc = mode() === 'ricalcola';
-      const left = Math.round((recalc ? totals(p).left : dayInfo(p, today).avail - outOn(today)) * 100) / 100;
+      const left = r2(recalc ? totals(p).left : Math.min(dayInfo(p, today).avail - outOn(today), totals(p).left));
       if (v > left + 0.004) { err(left > 0 ? t(recalc ? 'em.addTooMuch' : 'em.addTooMuchToday', { amt: money(left) }) : t('em.addNone')); $('eAmt').focus(); return; }
       emDraft = { amount: v, note };
       saveSavings();
@@ -1256,7 +1267,7 @@
         // abbassare: non sotto quello che è già stato usato · alzare: al massimo quello che ti resta
         if (d < 0 && -d > pot + 0.004) { err(t('x.savUsed', { amt: money(Math.max(0, r2(old - pot))) })); return; }
         if (d > 0) {
-          const left = r2(mode() === 'ricalcola' ? totals(p).left : dayInfo(p, today).avail - outOn(today));
+          const left = r2(mode() === 'ricalcola' ? totals(p).left : Math.min(dayInfo(p, today).avail - outOn(today), totals(p).left));
           if (d > left + 0.004) { err(t('em.addTooMuch', { amt: money(Math.max(0, r2(old + left))) })); return; }
         }
       }
@@ -1470,7 +1481,7 @@
       .map((f) => ({ id: f.id, kind: KINDS.indexOf(f.kind) >= 0 ? f.kind : 'other', name: typeof f.name === 'string' ? f.name.slice(0, 40) : '', amount: posNum(f.amount),
         first: f.first, repeat: ['month', '2month', 'year', 'once', 'custom'].indexOf(f.repeat) >= 0 ? f.repeat : 'month', by: f.by === 'weekday' ? 'weekday' : 'day',
         dom: f.dom >= 1 && f.dom <= 31 ? Math.round(f.dom) : undefined, every: f.every >= 1 && f.every <= 365 ? Math.round(f.every) : undefined,
-        unit: ['day', 'week', 'month'].indexOf(f.unit) >= 0 ? f.unit : undefined }))
+        unit: ['day', 'week', 'month'].indexOf(f.unit) >= 0 ? f.unit : undefined, added: isDay(f.added) ? f.added : undefined }))
       .filter((f) => f.repeat !== 'custom' || (f.every && f.unit));
     const paid = {};
     if (d.paid && typeof d.paid === 'object') periods.forEach((p) => {
@@ -1536,7 +1547,7 @@
     // quando arriva una versione nuova dell'app, ricarica una volta da sola
     // ...ma non mentre stai scrivendo: in quel caso aspetta che chiudi o lasci l'app
     let reloaded = false, pending = false;
-    const busy = () => !$('sheet').hidden || !$('fsheet').hidden || !$('esheet').hidden || !$('dsheet').hidden || $('inAmt').value !== '' || $('inNote').value !== '' ||
+    const busy = () => !$('sheet').hidden || !$('fsheet').hidden || !$('esheet').hidden || !$('dsheet').hidden || !$('xsheet').hidden || $('inAmt').value !== '' || $('inNote').value !== '' ||
       (document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) ||
       !!document.querySelector('.confirm');
     const reload = () => { if (!reloaded) { reloaded = true; location.reload(); } };
