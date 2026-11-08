@@ -367,9 +367,11 @@
     for (let d = p.start; d <= p.end; d = addDays(d, 1)) {
       const q = quotaOn(p, d), raw = q + carry + perDay;
       const spent = zeroAfter && d > zeroAfter ? 0 : outOn(d);
-      const m = dayMode(p, d), left = raw - spent, rem = diff(d, p.end);
+      // la scelta Recupera / Ricalcola del singolo giorno vale solo se quel giorno hai speso più di quello che avevi
+      const left = raw - spent, over = spent > 0 && left < -0.005, rem = diff(d, p.end);
+      const m = over ? dayMode(p, d) : periodMode(p);
       if (m === 'ricalcola' && rem > 0) { perDay += left / rem; carry = 0; } else carry = left;
-      r[d] = { raw, q, mode: m, left };
+      r[d] = { raw, q, mode: m, left, over };
     }
     return (memo[k] = r);
   }
@@ -397,8 +399,8 @@
   function tomorrowIfStop(p, day) {
     const t = addDays(day, 1);
     if (t > p.end) return null;
-    const x = sim(p, day)[t].raw;
-    return dayMode(p, t) === 'ricalcola' ? Math.max(0, x) : x;
+    const r = sim(p, day)[t];
+    return r.mode === 'ricalcola' ? Math.max(0, r.raw) : r.raw;
   }
   function dayState(p, d) {
     if (!inPeriod(p, d)) return 'off';
@@ -663,8 +665,10 @@
   function renderDayModeBox(boxId, hintId, p, d) {
     const box = $(boxId);
     if (!p || !inPeriod(p, d) || d > today || d === p.end) { box.hidden = true; return; }
-    const r = sim(p)[d], over = r.left < -0.005, ov = dayOverride(p, d);
-    box.hidden = !(over || ov);
+    // solo nei giorni in cui hai davvero sforato con le spese di quel giorno
+    // (non quando parti in rosso per i giorni prima ma non hai speso nulla)
+    const r = sim(p)[d];
+    box.hidden = !r.over;
     if (box.hidden) return;
     box.dataset.day = d;
     const m = dayMode(p, d), pm = periodMode(p);
@@ -711,7 +715,7 @@
     let line = '';
     if (inP && !future) {
       const ok = rest >= 0, amt = money(Math.abs(rest));
-      line = dayMode(p, d) === 'ricalcola' ? t(ok ? 'cal.dayRecalcLeft' : 'cal.dayRecalcOver', { amt }) : t(ok ? 'cal.dayCarryLeft' : 'cal.dayCarryOver', { amt });
+      line = sim(p)[d].mode === 'ricalcola' ? t(ok ? 'cal.dayRecalcLeft' : 'cal.dayRecalcOver', { amt }) : t(ok ? 'cal.dayCarryLeft' : 'cal.dayCarryOver', { amt });
       line = cap(line.replace(/^\s*·\s*/, ''));
     } else if (future) line = t('cal.futureHint');
     $('dayLine').textContent = line;
